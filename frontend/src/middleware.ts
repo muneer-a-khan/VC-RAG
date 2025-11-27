@@ -1,23 +1,26 @@
 import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
 
 export default withAuth(
-  function middleware(req) {
-    // Custom middleware logic can go here
-    return NextResponse.next()
+  function middleware() {
+    return
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
 
-        // Allow access to public routes
+        // Public routes that don't require authentication
         const publicRoutes = ["/", "/login", "/register"]
         if (publicRoutes.includes(pathname)) {
           return true
         }
 
-        // Protect all other routes
+        // API routes are handled separately
+        if (pathname.startsWith("/api")) {
+          return true
+        }
+
+        // All other routes require authentication
         return !!token
       },
     },
@@ -28,7 +31,7 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api (API routes - handled by NextAuth internally)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
