@@ -10,7 +10,6 @@ FastAPI backend with Prisma ORM for VC Copilot platform.
    source venv/bin/activate
    pip install -r requirements.txt
    ```
-
 2. **Configure:**
    ```bash
    cp env.template .env
