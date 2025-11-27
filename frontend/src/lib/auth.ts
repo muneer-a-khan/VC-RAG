@@ -3,10 +3,12 @@ import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 
-// Use different API URLs for development and production
-const API_URL = process.env.NODE_ENV === "production"
-  ? process.env.NEXT_PUBLIC_API_URL || "https://vc-rag.vercel.app/"
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+// API URL - remove trailing slash if present
+const getApiUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
+const API_URL = getApiUrl()
 
 export const authOptions: NextAuthOptions = {
   providers: [
