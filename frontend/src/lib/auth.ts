@@ -3,7 +3,10 @@ import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+// Use different API URLs for development and production
+const API_URL = process.env.NODE_ENV === "production"
+  ? process.env.NEXT_PUBLIC_API_URL || "https://vc-rag.vercel.app/"
+  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -135,6 +138,7 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 
+  // Only enable debug in development
   debug: process.env.NODE_ENV === "development",
 }
 
