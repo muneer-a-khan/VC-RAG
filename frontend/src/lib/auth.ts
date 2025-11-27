@@ -113,11 +113,13 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-      // Redirect to dashboard after sign in
-      if (url === baseUrl || url === `${baseUrl}/`) {
-        return `${baseUrl}/chat`
+      // After sign in, redirect to the intended page or chat
+      const callbackUrl = url.includes('callbackUrl=') ? new URL(url).searchParams.get('callbackUrl') : null
+      if (callbackUrl) {
+        return callbackUrl
       }
-      return url.startsWith(baseUrl) ? url : baseUrl
+      // Default to chat page after login
+      return `${baseUrl}/chat`
     },
   },
 
