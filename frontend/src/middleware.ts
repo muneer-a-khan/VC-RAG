@@ -15,8 +15,13 @@ export default withAuth(
           return true
         }
 
-        // API routes are handled separately
-        if (pathname.startsWith("/api")) {
+        // API routes are handled by NextAuth internally
+        if (pathname.startsWith("/api/auth")) {
+          return true
+        }
+
+        // Static assets and Next.js internals
+        if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
           return true
         }
 
@@ -30,13 +35,16 @@ export default withAuth(
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes - handled by NextAuth internally)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match specific protected routes:
+     * - /chat
+     * - /projects
+     * - /integrations
+     * Exclude API routes and static assets
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/chat/:path*",
+    "/projects/:path*",
+    "/integrations/:path*",
+    "/((?!api|_next|favicon).*)",
   ],
 }
 
