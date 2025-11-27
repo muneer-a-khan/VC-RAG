@@ -2,58 +2,50 @@ import { getServerSession } from "next-auth"
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
-
-// API URL - remove trailing slash if present
-const getApiUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-  return url.endsWith('/') ? url.slice(0, -1) : url
-}
-const API_URL = getApiUrl()
+import { prisma } from "@/lib/prisma"
+import * as bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    // Credentials provider - connects to your FastAPI backend
+    // Credentials provider - authenticates directly with database
     CredentialsProvider({
       name: "credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<any> {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing credentials")
+          return null
         }
 
         try {
-          // Call FastAPI login endpoint
-          const response = await fetch(`${API_URL}/api/v1/auth/login`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              username: credentials.email,
-              password: credentials.password,
-            }),
+          // Find user in database
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
           })
 
-          if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.detail || "Invalid credentials")
+          if (!user) {
+            return null
           }
 
-          const data = await response.json()
+          // Verify password
+          const isValid = await bcrypt.compare(credentials.password, user.hashedPassword)
 
-          // Return user object with access token
+          if (!isValid) {
+            return null
+          }
+
+          // Return user object
           return {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.full_name,
-            organization: data.user.organization,
-            accessToken: data.access_token,
+            id: user.id,
+            email: user.email,
+            name: user.fullName,
+            organization: user.organization || undefined,
           }
         } catch (error: any) {
-          throw new Error(error.message || "Authentication failed")
+          console.error("Auth error:", error)
+          return null
         }
       },
     }),
@@ -71,36 +63,40 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, account }) {
-      // Initial sign in
+      // Initial sign in with credentials
       if (user) {
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.organization = (user as any).organization
-        token.accessToken = (user as any).accessToken
       }
 
-      // For OAuth providers, register/sync user with backend
-      if (account && account.provider !== "credentials") {
+      // For OAuth providers, create/sync user in database
+      if (account && account.provider !== "credentials" && token.email) {
         try {
-          const response = await fetch(`${API_URL}/api/v1/auth/oauth-sync`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: token.email,
-              name: token.name,
-              provider: account.provider,
-              provider_id: account.providerAccountId,
-            }),
+          // Find or create user
+          let dbUser = await prisma.user.findUnique({
+            where: { email: token.email },
           })
 
-          if (response.ok) {
-            const data = await response.json()
-            token.id = data.user.id
-            token.accessToken = data.access_token
+          if (!dbUser) {
+            // Create new user for OAuth
+            const randomPassword = Math.random().toString(36).slice(-16)
+            const hashedPassword = await bcrypt.hash(randomPassword, 12)
+
+            dbUser = await prisma.user.create({
+              data: {
+                email: token.email,
+                hashedPassword,
+                fullName: token.name || "User",
+              },
+            })
           }
+
+          token.id = dbUser.id
+          token.organization = dbUser.organization || undefined
         } catch (error) {
-          console.error("OAuth sync failed:", error)
+          console.error("OAuth user sync failed:", error)
         }
       }
 
