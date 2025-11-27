@@ -1,4 +1,5 @@
 import axios from "axios"
+import { getSession } from "next-auth/react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -10,14 +11,29 @@ const api = axios.create({
   },
 })
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token")
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+// Add auth token from NextAuth session to requests
+api.interceptors.request.use(async (config) => {
+  // Client-side: get session from NextAuth
+  if (typeof window !== "undefined") {
+    const session = await getSession()
+    if (session?.accessToken) {
+      config.headers.Authorization = `Bearer ${session.accessToken}`
+    }
   }
   return config
 })
+
+// Handle 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      // Redirect to login on unauthorized
+      window.location.href = "/login"
+    }
+    return Promise.reject(error)
+  }
+)
 
 // API client functions
 export const apiClient = {

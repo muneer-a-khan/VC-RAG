@@ -14,8 +14,14 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
     
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+    # CORS - Allow frontend origins
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://vc-rag.vercel.app",
+        "https://vc-rag-git-auth-muneer-a-khans-projects.vercel.app",
+        "https://*.vercel.app",
+    ]
     
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/vccopilot"
