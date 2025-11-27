@@ -103,9 +103,10 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id
-        (session.user as any).organization = token.organization
-        (session as any).accessToken = token.accessToken
+        // Safely assign token properties (handle cases where token.id might not exist)
+        (session.user as any).id = token.id || token.sub || ""
+        (session.user as any).organization = token.organization || null
+        (session as any).accessToken = token.accessToken || ""
       }
       return session
     },
