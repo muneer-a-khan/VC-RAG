@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/vccopilot"
+    DIRECT_URL: Optional[str] = None  # For Prisma migrations with Supabase
     
     # Supabase (for pgvector)
     SUPABASE_URL: Optional[str] = None
