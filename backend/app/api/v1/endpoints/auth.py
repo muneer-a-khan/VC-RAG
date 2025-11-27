@@ -120,3 +120,62 @@ async def logout(token: str = Depends(oauth2_scheme)):
     """Logout current user"""
     # TODO: Invalidate token (add to blacklist if needed)
     return {"status": "logged_out"}
+
+
+class OAuthSyncRequest(BaseModel):
+    """OAuth sync request from NextAuth"""
+    email: EmailStr
+    name: str
+    provider: str
+    provider_id: str
+
+
+@router.post("/oauth-sync", response_model=TokenResponse)
+async def oauth_sync(data: OAuthSyncRequest, db = Depends(get_db)):
+    """
+    Sync OAuth user with database.
+    Creates user if doesn't exist, or returns existing user.
+    Called by NextAuth after OAuth sign in.
+    """
+    # Check if user exists
+    existing_user = await db.user.find_unique(where={"email": data.email})
+    
+    if existing_user:
+        # User exists, generate token
+        access_token = create_access_token(data={"sub": existing_user.id})
+        return TokenResponse(
+            access_token=access_token,
+            user={
+                "id": existing_user.id,
+                "email": existing_user.email,
+                "full_name": existing_user.fullName,
+                "organization": existing_user.organization
+            }
+        )
+    
+    # Create new user (no password for OAuth users)
+    import secrets
+    random_password = secrets.token_urlsafe(32)
+    hashed_password = get_password_hash(random_password)
+    
+    new_user = await db.user.create(
+        data={
+            "email": data.email,
+            "hashedPassword": hashed_password,
+            "fullName": data.name,
+            "organization": None
+        }
+    )
+    
+    # Generate token
+    access_token = create_access_token(data={"sub": new_user.id})
+    
+    return TokenResponse(
+        access_token=access_token,
+        user={
+            "id": new_user.id,
+            "email": new_user.email,
+            "full_name": new_user.fullName,
+            "organization": new_user.organization
+        }
+    )
