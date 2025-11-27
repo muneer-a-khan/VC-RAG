@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Github, Mail } from "lucide-react"
+import { Loader2, Mail } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -75,7 +75,7 @@ export default function LoginPage() {
 
           <CardContent className="space-y-4">
             {/* OAuth Providers */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <Button
                 variant="outline"
                 onClick={() => handleOAuthSignIn("google")}
@@ -83,16 +83,7 @@ export default function LoginPage() {
                 className="border-slate-600 bg-slate-700/50 text-white hover:bg-slate-700"
               >
                 <Mail className="mr-2 h-4 w-4" />
-                Google
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleOAuthSignIn("github")}
-                disabled={isLoading}
-                className="border-slate-600 bg-slate-700/50 text-white hover:bg-slate-700"
-              >
-                <Github className="mr-2 h-4 w-4" />
-                GitHub
+                Continue with Google
               </Button>
             </div>
 
