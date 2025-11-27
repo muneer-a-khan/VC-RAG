@@ -1,0 +1,2 @@
+"""VC Copilot Backend Application"""
+
