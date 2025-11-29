@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getOAuthUrl, AVAILABLE_INTEGRATIONS } from "@/lib/services/integration-service"
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/integrations/[toolName]/auth-url - Get OAuth URL for integration
 export async function GET(
   request: NextRequest,

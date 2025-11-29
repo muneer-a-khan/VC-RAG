@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { triggerSync } from "@/lib/services/integration-service"
 
+export const dynamic = 'force-dynamic'
+
 // POST /api/integrations/[toolName]/sync - Trigger data sync
 export async function POST(
   request: NextRequest,

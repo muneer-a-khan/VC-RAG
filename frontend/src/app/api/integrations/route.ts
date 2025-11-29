@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { AVAILABLE_INTEGRATIONS } from "@/lib/services/integration-service"
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/integrations - List all integrations
 export async function GET(request: NextRequest) {
   try {

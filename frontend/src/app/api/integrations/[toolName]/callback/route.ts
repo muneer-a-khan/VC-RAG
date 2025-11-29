@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { exchangeOAuthCode, AVAILABLE_INTEGRATIONS } from "@/lib/services/integration-service"
 
+export const dynamic = 'force-dynamic'
+
 // POST /api/integrations/[toolName]/callback - Complete OAuth connection
 export async function POST(
   request: NextRequest,

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/chat/[chatId] - Get a specific chat
 export async function GET(
   request: NextRequest,
