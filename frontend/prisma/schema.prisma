@@ -1,6 +1,3 @@
-// Prisma Schema for VC Copilot
-// Learn more: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,35 +11,32 @@ datasource db {
 model User {
   id             String        @id @default(uuid())
   email          String        @unique
-  hashedPassword String        @map("hashed_password")
-  fullName       String        @map("full_name")
-  organization   String?
-  isActive       Boolean       @default(true) @map("is_active")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  // Relations
-  projects       Project[]
+  fullName       String        @map("full_name")
+  hashedPassword String        @map("hashed_password")
+  isActive       Boolean       @default(true) @map("is_active")
+  organization   String?
   chats          Chat[]
   integrations   Integration[]
+  projects       Project[]
 
   @@map("users")
 }
 
 model Project {
-  id          String    @id @default(uuid())
-  name        String
-  description String?
-  type        String    @default("portfolio_company")
-  userId      String    @map("user_id")
-  metadata    Json      @default("{}")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documents       Document[]
+  id              String           @id @default(uuid())
+  name            String
+  description     String?
+  type            String           @default("portfolio_company")
+  userId          String           @map("user_id")
+  metadata        Json             @default("{}")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
   chats           Chat[]
+  documents       Document[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vectorDocuments VectorDocument[]
 
   @@index([userId])
   @@map("projects")
@@ -55,11 +49,9 @@ model Chat {
   projectId String?   @map("project_id")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project  Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  messages Message[]
+  project   Project?  @relation(fields: [projectId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
 
   @@index([userId])
   @@index([projectId])
@@ -73,28 +65,24 @@ model Message {
   content   String
   sources   Json     @default("[]")
   createdAt DateTime @default(now()) @map("created_at")
-
-  // Relations
-  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId])
   @@map("messages")
 }
 
 model Document {
-  id          String    @id @default(uuid())
-  projectId   String    @map("project_id")
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
   filename    String
-  fileType    String    @map("file_type")
-  fileSize    Int       @map("file_size")
-  storagePath String    @map("storage_path")
-  status      String    @default("processing")
-  metadata    Json      @default("{}")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileType    String   @map("file_type")
+  fileSize    Int      @map("file_size")
+  storagePath String   @map("storage_path")
+  status      String   @default("processing")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@map("documents")
@@ -112,12 +100,25 @@ model Integration {
   metadata    Json      @default("{}")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
   @@index([userId])
   @@map("integrations")
 }
 
+model VectorDocument {
+  id         String   @id
+  documentId String?  @map("document_id")
+  projectId  String   @map("project_id")
+  content    String
+  metadata   Json     @default("{}")
+  sourceType String   @map("source_type")
+  chunkIndex Int      @default(0) @map("chunk_index")
+  createdAt  DateTime @default(now()) @map("created_at")
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([projectId])
+  @@map("vector_documents")
+}
