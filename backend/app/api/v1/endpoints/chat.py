@@ -5,10 +5,12 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
+import json
 
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.db.database import get_db
+from app.services.rag_service import rag_service
 
 router = APIRouter()
 
@@ -18,7 +20,7 @@ class ChatMessage(BaseModel):
     message: str
     chat_id: Optional[str] = None
     project_id: Optional[str] = None
-    stream: bool = True
+    stream: bool = False  # Streaming not yet implemented
 
 
 class ChatResponse(BaseModel):
@@ -40,6 +42,20 @@ class SearchRequest(BaseModel):
     query: str
     project_id: Optional[str] = None
     limit: int = 10
+
+
+class RAGQueryRequest(BaseModel):
+    """Direct RAG query without chat persistence"""
+    query: str
+    project_id: Optional[str] = None
+    top_k: int = 5
+
+
+class RAGQueryResponse(BaseModel):
+    """RAG query response"""
+    answer: str
+    sources: List[dict]
+    context_used: int
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -72,7 +88,7 @@ async def send_message(
             data={
                 "userId": current_user.id,
                 "projectId": request.project_id,
-                "title": "New Chat"
+                "title": request.message[:50] + "..." if len(request.message) > 50 else request.message
             }
         )
     
@@ -85,29 +101,82 @@ async def send_message(
         }
     )
     
-    # TODO: Implement RAG pipeline
-    # 1. Convert message to embedding
-    # 2. Similarity search in vector DB
-    # 3. Construct context from retrieved chunks
-    # 4. Generate response with LLM
-    # 5. Return with source citations
+    # Get chat history for context
+    history_messages = await db.message.find_many(
+        where={"chatId": chat.id},
+        order={"createdAt": "asc"},
+        take=10
+    )
     
-    response_text = "This is a placeholder response. RAG pipeline to be implemented."
+    chat_history = [
+        {"role": msg.role, "content": msg.content}
+        for msg in history_messages[:-1]  # Exclude the message we just added
+    ]
     
-    # Save assistant message
+    # RAG Pipeline
+    # 1. Similarity search in vector DB
+    context = await rag_service.similarity_search(
+        query=request.message,
+        project_id=request.project_id,
+        top_k=5
+    )
+    
+    # 2. Generate response with LLM
+    result = await rag_service.generate_response(
+        query=request.message,
+        context=context,
+        chat_history=chat_history if chat_history else None
+    )
+    
+    response_text = result["response"]
+    sources = result["sources"]
+    
+    # Save assistant message with sources
     await db.message.create(
         data={
             "chatId": chat.id,
             "role": "assistant",
-            "content": response_text
+            "content": response_text,
+            "sources": json.dumps(sources)
         }
     )
     
     return ChatResponse(
         chat_id=chat.id,
         message=response_text,
-        sources=[],
+        sources=sources,
         timestamp=datetime.utcnow().isoformat()
+    )
+
+
+@router.post("/query", response_model=RAGQueryResponse)
+async def rag_query(
+    request: RAGQueryRequest,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """
+    Direct RAG query endpoint - no chat persistence
+    
+    Useful for quick queries and testing the RAG pipeline
+    """
+    # Similarity search
+    context = await rag_service.similarity_search(
+        query=request.query,
+        project_id=request.project_id,
+        top_k=request.top_k
+    )
+    
+    # Generate response
+    result = await rag_service.generate_response(
+        query=request.query,
+        context=context
+    )
+    
+    return RAGQueryResponse(
+        answer=result["response"],
+        sources=result["sources"],
+        context_used=len(context)
     )
 
 
@@ -148,7 +217,7 @@ async def get_chat_history(
         },
         include={
             "messages": {
-                "order_by": {"createdAt": "asc"}
+                "order": {"createdAt": "asc"}
             }
         }
     )
@@ -163,6 +232,42 @@ async def get_chat_history(
     }
 
 
+@router.get("/list")
+async def list_chats(
+    project_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """List all chats for current user"""
+    where_clause = {"userId": current_user.id}
+    if project_id:
+        where_clause["projectId"] = project_id
+    
+    chats = await db.chat.find_many(
+        where=where_clause,
+        order={"updatedAt": "desc"},
+        include={
+            "messages": {
+                "take": 1,
+                "order": {"createdAt": "desc"}
+            }
+        }
+    )
+    
+    return {
+        "chats": [
+            {
+                "id": chat.id,
+                "title": chat.title,
+                "project_id": chat.projectId,
+                "last_message": chat.messages[0].content[:100] if chat.messages else None,
+                "updated_at": chat.updatedAt.isoformat()
+            }
+            for chat in chats
+        ]
+    }
+
+
 @router.get("/search")
 async def search(
     query: str,
@@ -171,7 +276,6 @@ async def search(
     db = Depends(get_db)
 ):
     """Search conversations, documents, and integrated data"""
-    # TODO: Implement semantic search across all data sources
     where_clause = {"userId": current_user.id}
     if project_id:
         where_clause["projectId"] = project_id
@@ -190,7 +294,48 @@ async def search(
         take=10
     )
     
+    # Also do semantic search
+    semantic_results = await rag_service.similarity_search(
+        query=query,
+        project_id=project_id,
+        top_k=5
+    )
+    
     return {
-        "results": messages,
-        "total": len(messages)
+        "message_results": messages,
+        "semantic_results": [
+            {
+                "content": r["content"][:200] + "...",
+                "source": r["metadata"].get("source", "Unknown"),
+                "similarity": round(r["similarity"], 3)
+            }
+            for r in semantic_results
+        ],
+        "total": len(messages) + len(semantic_results)
     }
+
+
+@router.delete("/{chat_id}")
+async def delete_chat(
+    chat_id: str,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Delete a chat and all its messages"""
+    chat = await db.chat.find_first(
+        where={
+            "id": chat_id,
+            "userId": current_user.id
+        }
+    )
+    
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    # Delete messages first
+    await db.message.delete_many(where={"chatId": chat_id})
+    
+    # Delete chat
+    await db.chat.delete(where={"id": chat_id})
+    
+    return {"status": "deleted", "chat_id": chat_id}

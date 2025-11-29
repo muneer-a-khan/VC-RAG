@@ -115,3 +115,5 @@ echo "$FRONTEND_PID" >> .vc_pids
 
 echo ""
 echo -e "${GREEN}Happy coding! 🚀${NC}"
+
+

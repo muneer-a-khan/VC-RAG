@@ -41,7 +41,12 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: Optional[str] = None
     DEFAULT_LLM_MODEL: str = "gpt-4-turbo-preview"
     
-    # Embeddings
+    # DeepSeek
+    DEEPSEEK_API_KEY: Optional[str] = None
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_CHAT_MODEL: str = "deepseek-chat"
+    
+    # Embeddings - using text-embedding-3-small via OpenAI-compatible API
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
     
@@ -64,9 +69,14 @@ class Settings(BaseSettings):
     # AngelList
     ANGELLIST_API_KEY: Optional[str] = None
     
+    # Frontend Supabase settings (optional, used for frontend but present in .env)
+    NEXT_PUBLIC_SUPABASE_URL: Optional[str] = None
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: Optional[str] = None
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore any extra env variables
 
 
 settings = Settings()
