@@ -16,11 +16,12 @@ load_dotenv()
 from app.db.database import prisma
 from app.core.auth import get_password_hash
 
-# Load sentence-transformers model
-from sentence_transformers import SentenceTransformer
-print("🔄 Loading embedding model (all-mpnet-base-v2)...")
-embedding_model = SentenceTransformer("all-mpnet-base-v2")
-print("✅ Embedding model loaded!")
+# Use simple hash-based embeddings for seeding (no external API needed)
+import hashlib
+import numpy as np
+
+print("🔄 Using hash-based embeddings for seeding...")
+print("✅ Hash-based embedding generator configured!")
 
 # Demo Companies Data - Rich VC portfolio content
 DEMO_COMPANIES = [
@@ -768,15 +769,21 @@ Reserve Management:
 
 
 def generate_embedding(text: str) -> list:
-    """Generate embedding using sentence-transformers (local, no API needed)"""
-    embedding = embedding_model.encode(text, convert_to_numpy=True)
-    embedding_list = embedding.tolist()
-    
-    # Pad to 1536 dimensions for compatibility
-    if len(embedding_list) < 1536:
-        embedding_list.extend([0.0] * (1536 - len(embedding_list)))
-    
-    return embedding_list[:1536]
+    """Generate deterministic embedding using hash-based approach"""
+    # Create a deterministic hash from the text
+    hash_obj = hashlib.sha256(text.encode('utf-8'))
+    hash_bytes = hash_obj.digest()
+
+    # Convert hash to a 1536-dimensional vector using pseudo-random generation
+    np.random.seed(int.from_bytes(hash_bytes[:4], byteorder='big'))
+    embedding = np.random.normal(0, 1, 1536).tolist()
+
+    # Normalize to unit vector
+    norm = np.linalg.norm(embedding)
+    if norm > 0:
+        embedding = (np.array(embedding) / norm).tolist()
+
+    return embedding
 
 
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list:
@@ -794,9 +801,9 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> list:
 
 
 async def seed_demo_data():
-    """Seed database with comprehensive demo data using real embeddings"""
-    print("🚀 Starting demo data seeding with REAL semantic embeddings...")
-    print("📡 Using sentence-transformers (all-mpnet-base-v2) - no API key needed!")
+    """Seed database with comprehensive demo data using deterministic embeddings"""
+    print("🚀 Starting demo data seeding with deterministic embeddings...")
+    print("📡 Using hash-based embedding generation (no API required)...")
     
     await prisma.connect()
     print("✅ Connected to database")
@@ -955,8 +962,8 @@ async def seed_demo_data():
     print(f"\n📊 Summary:")
     print(f"   - User created: demo@vccopilot.com (password: demo123)")
     print(f"   - Projects created: {len(DEMO_COMPANIES) + 1}")
-    print(f"   - Vector documents: {total_chunks} chunks with REAL embeddings")
-    print(f"   - Embedding model: all-mpnet-base-v2 (768 dimensions)")
+    print(f"   - Vector documents: {total_chunks} chunks with deterministic embeddings")
+    print(f"   - Embedding method: Hash-based (1536 dimensions)")
     print(f"   - Integrations: {len(integrations_data)}")
     print("\n💡 You can now test RAG queries about:")
     print("   - TechFlow AI (enterprise AI automation)")
