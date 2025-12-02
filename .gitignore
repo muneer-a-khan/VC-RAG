@@ -72,3 +72,6 @@ alembic/versions/*.pyc
 *.tmp
 tmp/
 temp/
+
+# Process tracking
+.vc_pids
