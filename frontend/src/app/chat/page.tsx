@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Navbar } from "@/components/layout/navbar"
-import { Send, Plus, MessageSquare, Trash2, Loader2 } from "lucide-react"
+import { Send, Plus, MessageSquare, Trash2, Loader2, Paperclip, X, FileText, File } from "lucide-react"
 import { apiClient } from "@/lib/api"
 
 interface Message {
@@ -24,6 +24,15 @@ interface ChatSession {
   created_at: string
 }
 
+interface UploadedFile {
+  id: string
+  filename: string
+  file_type: string
+  file_size: number
+  status: string
+  created_at: string
+}
+
 export default function ChatPage() {
   const { data: session } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
@@ -32,11 +41,88 @@ export default function ChatPage() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [recentChats, setRecentChats] = useState<ChatSession[]>([])
   const [loadingChats, setLoadingChats] = useState(false)
+  
+  // File upload state
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [showFiles, setShowFiles] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Load recent chats on mount
+  // Load recent chats and uploaded files on mount
   useEffect(() => {
     loadRecentChats()
+    loadUploadedFiles()
   }, [])
+
+  async function loadUploadedFiles() {
+    try {
+      const response = await fetch('/api/chat/upload')
+      if (response.ok) {
+        const data = await response.json()
+        setUploadedFiles(data.files || [])
+      }
+    } catch (error) {
+      console.error("Failed to load uploaded files:", error)
+    }
+  }
+
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach(file => formData.append('files', file))
+
+      const response = await fetch('/api/chat/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        await loadUploadedFiles()
+        
+        // Show success message in chat
+        const uploadMessage: Message = {
+          role: "assistant",
+          content: `Successfully uploaded ${data.files_uploaded} file(s). You can now ask questions about the content of these files.${data.errors?.length ? `\n\nWarnings:\n${data.errors.join('\n')}` : ''}`,
+          timestamp: new Date().toISOString()
+        }
+        setMessages(prev => [...prev, uploadMessage])
+      } else {
+        const error = await response.json()
+        throw new Error(error.detail || 'Upload failed')
+      }
+    } catch (error: any) {
+      console.error("Upload error:", error)
+      const errorMessage: Message = {
+        role: "assistant",
+        content: `Failed to upload files: ${error.message}`,
+        timestamp: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  async function deleteFile(fileId: string) {
+    try {
+      const response = await fetch(`/api/chat/upload?id=${fileId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
+      }
+    } catch (error) {
+      console.error("Failed to delete file:", error)
+    }
+  }
 
   async function loadRecentChats() {
     try {
@@ -131,7 +217,8 @@ export default function ChatPage() {
       const assistantMessage: Message = {
         role: "assistant",
         content: response.response || "I received your message but couldn't generate a response.",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        sources: response.sources,
       }
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
@@ -145,6 +232,12 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   return (
@@ -162,6 +255,66 @@ export default function ChatPage() {
             <Plus className="h-4 w-4" />
             New Chat
           </Button>
+          
+          {/* File Upload Section */}
+          <div className="mb-4 pb-4 border-b">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              multiple
+              accept=".txt,.md,.csv,.json,.pdf,.html,.xml"
+              className="hidden"
+            />
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
+              {isUploading ? 'Uploading...' : 'Upload Files'}
+            </Button>
+            
+            {uploadedFiles.length > 0 && (
+              <div className="mt-2">
+                <button
+                  onClick={() => setShowFiles(!showFiles)}
+                  className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 hover:text-slate-700"
+                >
+                  <FileText className="h-3 w-3" />
+                  {uploadedFiles.length} File{uploadedFiles.length !== 1 ? 's' : ''} Uploaded
+                </button>
+                
+                {showFiles && (
+                  <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                    {uploadedFiles.map((file) => (
+                      <div 
+                        key={file.id}
+                        className="group flex items-center gap-2 p-2 rounded-md bg-slate-50 text-xs"
+                      >
+                        <File className="h-3 w-3 flex-shrink-0 text-slate-400" />
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate font-medium">{file.filename}</div>
+                          <div className="text-slate-400">{formatFileSize(file.file_size)}</div>
+                        </div>
+                        <button
+                          onClick={() => deleteFile(file.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-opacity"
+                        >
+                          <X className="h-3 w-3 text-red-500" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           
           <div className="flex-1 overflow-y-auto">
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
@@ -211,9 +364,27 @@ export default function ChatPage() {
           <div className="flex-1 overflow-y-auto p-6">
             {messages.length === 0 ? (
               <div className="h-full flex items-center justify-center">
-                <div className="text-center">
+                <div className="text-center max-w-md">
                   <h3 className="text-2xl font-semibold mb-2">How can I help you today?</h3>
-                  <p className="text-slate-600">Ask me anything about your portfolio companies, deals, or market research.</p>
+                  <p className="text-slate-600 mb-6">
+                    Upload files and ask questions about their content. I'll search through your documents to provide accurate answers.
+                  </p>
+                  <div className="flex justify-center gap-4">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                      Upload Files
+                    </Button>
+                  </div>
+                  {uploadedFiles.length > 0 && (
+                    <p className="mt-4 text-sm text-green-600">
+                      {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''} ready for questions
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -222,15 +393,23 @@ export default function ChatPage() {
                   <Card key={message.id || index} className={message.role === "user" ? "bg-blue-50" : "bg-white"}>
                     <div className="p-4">
                       <div className="font-semibold mb-1">
-                        {message.role === "user" ? "You" : "VC Copilot"}
+                        {message.role === "user" ? "You" : "Assistant"}
                       </div>
                       <div className="text-slate-700 whitespace-pre-wrap">{message.content}</div>
                       {message.sources && message.sources.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-slate-200">
                           <div className="text-xs font-semibold text-slate-500 mb-1">Sources:</div>
-                          <div className="text-xs text-slate-600">
+                          <div className="text-xs text-slate-600 space-y-1">
                             {message.sources.map((source: any, i: number) => (
-                              <div key={i}>{source.name || source.source || `Source ${i + 1}`}</div>
+                              <div key={i} className="flex items-center gap-2">
+                                <FileText className="h-3 w-3" />
+                                <span>{source.source || source.name || `Source ${i + 1}`}</span>
+                                {source.similarity && (
+                                  <span className="text-slate-400">
+                                    ({(source.similarity * 100).toFixed(0)}% match)
+                                  </span>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -241,10 +420,10 @@ export default function ChatPage() {
                 {isLoading && (
                   <Card className="bg-white">
                     <div className="p-4">
-                      <div className="font-semibold mb-1">VC Copilot</div>
+                      <div className="font-semibold mb-1">Assistant</div>
                       <div className="flex items-center gap-2 text-slate-700">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Thinking...
+                        Searching documents and generating response...
                       </div>
                     </div>
                   </Card>
@@ -255,26 +434,56 @@ export default function ChatPage() {
 
           {/* Input */}
           <div className="border-t bg-white p-4">
-            <div className="max-w-3xl mx-auto flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSend()}
-                placeholder={`Ask a question${session?.user?.name ? `, ${session.user.name.split(' ')[0]}` : ''}...`}
-                className="flex-1"
-                disabled={isLoading}
-              />
-              <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+            <div className="max-w-3xl mx-auto">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  title="Upload files"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Paperclip className="h-4 w-4" />
+                  )}
+                </Button>
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSend()}
+                  placeholder={`Ask a question${session?.user?.name ? `, ${session.user.name.split(' ')[0]}` : ''}...`}
+                  className="flex-1"
+                  disabled={isLoading}
+                />
+                <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {uploadedFiles.length === 0 && (
+                <p className="text-xs text-slate-500 mt-2 text-center">
+                  Tip: Upload files to chat about their content
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        multiple
+        accept=".txt,.md,.csv,.json,.pdf,.html,.xml"
+        className="hidden"
+      />
     </div>
   )
 }

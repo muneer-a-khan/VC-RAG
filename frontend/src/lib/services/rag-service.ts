@@ -1,27 +1,35 @@
 /**
  * RAG (Retrieval Augmented Generation) Service
- * Handles embeddings, similarity search, and LLM response generation
+ * Handles embeddings, similarity search, and LLM response generation using DeepSeek
  */
-import OpenAI from "openai"
+import { prisma } from "@/lib/prisma"
 
 // Configuration
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "text-embedding-3-small"
-const LLM_MODEL = process.env.DEFAULT_LLM_MODEL || "gpt-4-turbo-preview"
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
+const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com"
+const DEEPSEEK_CHAT_MODEL = process.env.DEEPSEEK_CHAT_MODEL || "deepseek-chat"
 const CHUNK_SIZE = parseInt(process.env.CHUNK_SIZE || "1000")
 const CHUNK_OVERLAP = parseInt(process.env.CHUNK_OVERLAP || "200")
 const TOP_K_RESULTS = parseInt(process.env.TOP_K_RESULTS || "5")
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Simple embedding using text similarity (for when we don't have OpenAI)
+function simpleTextSimilarity(text1: string, text2: string): number {
+  const words1 = new Set(text1.toLowerCase().split(/\s+/))
+  const words2 = new Set(text2.toLowerCase().split(/\s+/))
+  const intersection = new Set([...words1].filter(x => words2.has(x)))
+  const union = new Set([...words1, ...words2])
+  return intersection.size / union.size
+}
 
 export interface DocumentChunk {
+  id: string
   content: string
   metadata: {
     source?: string
+    title?: string
     [key: string]: any
   }
+  similarity?: number
 }
 
 export interface ChatMessage {
@@ -30,55 +38,82 @@ export interface ChatMessage {
 }
 
 /**
- * Generate embedding vector for text
+ * Generate a simple hash-based embedding for text
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: text,
-  })
-  return response.data[0].embedding
+  const embedding: number[] = new Array(768).fill(0)
+  const normalized = text.toLowerCase()
+  for (let i = 0; i < normalized.length && i < 768; i++) {
+    embedding[i] = normalized.charCodeAt(i) / 255
+  }
+  return embedding
 }
 
 /**
  * Perform similarity search in vector database
- * TODO: Implement actual pgvector search
  */
 export async function similaritySearch(
-  queryEmbedding: number[],
-  projectId: string,
+  query: string,
+  projectId?: string,
   topK: number = TOP_K_RESULTS
 ): Promise<DocumentChunk[]> {
-  // TODO: Implement vector similarity search using pgvector
-  // Example SQL query:
-  // SELECT * FROM vector_documents
-  // WHERE project_id = ?
-  // ORDER BY embedding <-> ?
-  // LIMIT ?
-  return []
+  const whereClause: any = {}
+  if (projectId) {
+    whereClause.projectId = projectId
+  }
+
+  const vectorDocs = await prisma.vectorDocument.findMany({
+    where: whereClause,
+    take: 100,
+  })
+
+  const results: DocumentChunk[] = []
+  for (const doc of vectorDocs) {
+    const metadata = typeof doc.metadata === 'string' 
+      ? JSON.parse(doc.metadata) 
+      : doc.metadata as any
+
+    const similarity = simpleTextSimilarity(query, doc.content)
+    
+    results.push({
+      id: doc.id,
+      content: doc.content,
+      metadata: {
+        source: metadata?.source || metadata?.title || 'Document',
+        title: metadata?.title,
+        ...metadata,
+      },
+      similarity,
+    })
+  }
+
+  results.sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
+  return results.slice(0, topK)
 }
 
 /**
- * Generate response using LLM with context
+ * Generate response using DeepSeek LLM with context
  */
 export async function generateResponse(
   query: string,
   context: DocumentChunk[],
   chatHistory?: ChatMessage[]
 ): Promise<string> {
+  if (!DEEPSEEK_API_KEY) {
+    return generateFallbackResponse(query, context)
+  }
+
   const systemPrompt = buildSystemPrompt()
   const contextText = formatContext(context)
 
-  const messages: ChatMessage[] = [
+  const messages: any[] = [
     { role: "system", content: systemPrompt },
   ]
 
-  // Add chat history if available (last 10 messages)
   if (chatHistory && chatHistory.length > 0) {
     messages.push(...chatHistory.slice(-10))
   }
 
-  // Add context and user query
   const userMessage = `Context:
 ${contextText}
 
@@ -88,43 +123,76 @@ Please provide a detailed, accurate response based on the context provided. If y
 
   messages.push({ role: "user", content: userMessage })
 
-  const response = await openai.chat.completions.create({
-    model: LLM_MODEL,
-    messages: messages as any,
-    temperature: 0.7,
-    max_tokens: 1000,
+  try {
+    const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: DEEPSEEK_CHAT_MODEL,
+        messages,
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return data.choices[0].message.content || ""
+    } else if (response.status === 402) {
+      console.warn("DeepSeek API: Insufficient balance - using fallback")
+      return generateFallbackResponse(query, context)
+    } else {
+      console.error("DeepSeek API error:", response.status)
+      return generateFallbackResponse(query, context)
+    }
+  } catch (error) {
+    console.error("DeepSeek API exception:", error)
+    return generateFallbackResponse(query, context)
+  }
+}
+
+function generateFallbackResponse(query: string, context: DocumentChunk[]): string {
+  if (context.length === 0) {
+    return `I don't have any relevant documents to answer your question: "${query}"
+
+Please upload some files first, and I'll be able to help you find information from them.`
+  }
+
+  let response = `Based on the available documents, here's what I found relevant to your query:\n\n`
+  
+  context.slice(0, 3).forEach((doc, i) => {
+    const source = doc.metadata?.source || doc.metadata?.title || 'Document'
+    response += `**Source ${i + 1}: ${source}**\n`
+    response += `${doc.content.substring(0, 500)}${doc.content.length > 500 ? '...' : ''}\n\n`
   })
 
-  return response.choices[0].message.content || ""
+  return response
 }
 
-/**
- * Build system prompt for VC-specific reasoning
- */
 function buildSystemPrompt(): string {
-  return `You are an AI assistant for venture capital professionals. Your role is to:
+  return `You are an AI assistant that helps users understand and analyze their uploaded documents. Your role is to:
 
-1. Provide accurate, data-driven insights for due diligence and portfolio analysis
+1. Provide accurate, helpful responses based on the document context provided
 2. Reference specific sources when citing information
-3. Understand VC-specific terminology and frameworks
-4. Be concise but thorough in your analysis
-5. Highlight key metrics, risks, and opportunities
-6. Maintain confidentiality and professionalism
+3. Be concise but thorough in your analysis
+4. If you don't have enough information to answer confidently, say so
+5. When citing specific data points, mention which source they come from
 
-Always base your responses on the provided context. If you don't have enough information to answer confidently, say so.`
+Always base your responses on the provided context. If the context doesn't contain relevant information, clearly state that.`
 }
 
-/**
- * Format retrieved context for prompt
- */
 function formatContext(context: DocumentChunk[]): string {
   if (!context || context.length === 0) {
-    return "No relevant context found."
+    return "No relevant context found in uploaded documents."
   }
 
   const formatted = context.map((doc, i) => {
-    const source = doc.metadata?.source || "Unknown"
-    return `[Source ${i + 1}: ${source}]\n${doc.content}\n`
+    const source = doc.metadata?.source || doc.metadata?.title || "Document"
+    const similarity = doc.similarity ? ` | Relevance: ${(doc.similarity * 100).toFixed(1)}%` : ''
+    return `[Source ${i + 1}: ${source}${similarity}]\n${doc.content}\n`
   })
 
   return formatted.join("\n---\n")
@@ -140,28 +208,76 @@ export function chunkText(text: string): string[] {
   while (start < text.length) {
     const end = start + CHUNK_SIZE
     const chunk = text.slice(start, end)
-    chunks.push(chunk)
+    if (chunk.trim().length > 0) {
+      chunks.push(chunk.trim())
+    }
     start = end - CHUNK_OVERLAP
+    if (start + CHUNK_OVERLAP >= text.length) {
+      break
+    }
   }
 
-  return chunks
+  return chunks.filter(c => c.length > 10)
 }
 
 /**
- * Process and embed a document
+ * Index a document by chunking and storing - BATCH VERSION (faster)
  */
-export async function processDocument(
+export async function indexDocument(
   content: string,
-  metadata: Record<string, any>
-): Promise<{ chunks: string[]; embeddings: number[][] }> {
+  filename: string,
+  userId: string,
+  projectId?: string
+): Promise<number> {
   const chunks = chunkText(content)
-  const embeddings: number[][] = []
+  
+  if (chunks.length === 0) {
+    return 0
+  }
+  
+  // If no project specified, create a default one for the user
+  let targetProjectId = projectId
+  if (!targetProjectId) {
+    let defaultProject = await prisma.project.findFirst({
+      where: {
+        userId,
+        name: "Chat Uploads",
+      },
+    })
 
-  for (const chunk of chunks) {
-    const embedding = await generateEmbedding(chunk)
-    embeddings.push(embedding)
+    if (!defaultProject) {
+      defaultProject = await prisma.project.create({
+        data: {
+          userId,
+          name: "Chat Uploads",
+          description: "Files uploaded via chat interface",
+          type: "uploads",
+        },
+      })
+    }
+    targetProjectId = defaultProject.id
   }
 
-  return { chunks, embeddings }
-}
+  // BATCH INSERT - much faster than individual inserts
+  const timestamp = Date.now()
+  const batchData = chunks.map((chunk, i) => ({
+    id: `${timestamp}-${i}-${Math.random().toString(36).substr(2, 6)}`,
+    projectId: targetProjectId!,
+    content: chunk,
+    sourceType: "file",
+    chunkIndex: i,
+    metadata: JSON.stringify({
+      title: filename,
+      source: filename,
+      chunk_index: i,
+      total_chunks: chunks.length,
+    }),
+  }))
 
+  // Use createMany for batch insert
+  await prisma.vectorDocument.createMany({
+    data: batchData,
+  })
+
+  return chunks.length
+}
