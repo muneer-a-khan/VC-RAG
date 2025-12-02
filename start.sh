@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # VC Copilot Startup Script
-# This script starts both the backend and frontend services
+# This script starts the Next.js application (frontend + API routes)
+# Note: The backend was migrated to Next.js API routes (see MIGRATION_COMPLETE.md)
 
 set -e  # Exit on any error
 
@@ -49,48 +50,52 @@ wait_for_service() {
 
 # Kill any existing processes
 echo -e "${YELLOW}Cleaning up existing processes...${NC}"
-pkill -f "uvicorn.*main:app" || true
 pkill -f "npm run dev" || true
 pkill -f "next dev" || true
 
 # Check and clear ports
-check_port 8001  # Backend port
-check_port 3000  # Frontend port
+check_port 3000  # Next.js port
 
-# Start backend
-echo -e "${BLUE}Starting backend server...${NC}"
-cd backend
-source venv/bin/activate
-uvicorn main:app --reload --host 0.0.0.0 --port 8001 > ../backend.log 2>&1 &
-BACKEND_PID=$!
-echo -e "${GREEN}Backend started with PID: $BACKEND_PID${NC}"
-cd ..
-
-# Wait a moment for backend to initialize
-sleep 3
-
-# Check if backend is responding
-if wait_for_service "http://localhost:8001/docs" "Backend API"; then
-    echo -e "${GREEN}✓ Backend is running at http://localhost:8001${NC}"
-    echo -e "${GREEN}✓ API docs available at http://localhost:8001/docs${NC}"
+# Check for required environment variables
+if [ -f "frontend/.env.local" ]; then
+    echo -e "${GREEN}✓ Found .env.local${NC}"
 else
-    echo -e "${RED}✗ Backend failed to start properly. Check backend.log for details.${NC}"
-    exit 1
+    if [ -f "frontend/env.local.template" ]; then
+        echo -e "${YELLOW}⚠ No .env.local found. Creating from template...${NC}"
+        cp frontend/env.local.template frontend/.env.local
+        echo -e "${YELLOW}⚠ Please update frontend/.env.local with your configuration${NC}"
+    else
+        echo -e "${YELLOW}⚠ No .env.local found. Create one with required environment variables.${NC}"
+    fi
 fi
 
-# Start frontend
-echo -e "${BLUE}Starting frontend server...${NC}"
+# Start Next.js application (includes both frontend and API routes)
+echo -e "${BLUE}Starting Next.js application...${NC}"
 cd frontend
+
+# Ensure dependencies are installed
+if [ ! -d "node_modules" ]; then
+    echo -e "${BLUE}Installing dependencies...${NC}"
+    npm install
+fi
+
+# Generate Prisma client if needed
+if [ ! -d "node_modules/.prisma" ]; then
+    echo -e "${BLUE}Generating Prisma client...${NC}"
+    npx prisma generate
+fi
+
+# Start the development server
 npm run dev > ../frontend.log 2>&1 &
-FRONTEND_PID=$!
-echo -e "${GREEN}Frontend started with PID: $FRONTEND_PID${NC}"
+APP_PID=$!
+echo -e "${GREEN}Next.js started with PID: $APP_PID${NC}"
 cd ..
 
-# Wait for frontend to be ready
-if wait_for_service "http://localhost:3000" "Frontend"; then
-    echo -e "${GREEN}✓ Frontend is running at http://localhost:3000${NC}"
+# Wait for the application to be ready
+if wait_for_service "http://localhost:3000" "VC Copilot"; then
+    echo -e "${GREEN}✓ Application is running at http://localhost:3000${NC}"
 else
-    echo -e "${RED}✗ Frontend failed to start properly. Check frontend.log for details.${NC}"
+    echo -e "${RED}✗ Application failed to start properly. Check frontend.log for details.${NC}"
     exit 1
 fi
 
@@ -98,22 +103,18 @@ echo ""
 echo -e "${GREEN}🎉 VC Copilot is now running!${NC}"
 echo ""
 echo -e "${BLUE}Services:${NC}"
-echo -e "  📊 Backend API:  http://localhost:8001"
-echo -e "  🖥️  Frontend:     http://localhost:3000"
-echo -e "  📚 API Docs:     http://localhost:8001/docs"
+echo -e "  🖥️  Application:  http://localhost:3000"
+echo -e "  🔐 Auth:         http://localhost:3000/api/auth"
+echo -e "  💬 Chat API:     http://localhost:3000/api/chat"
+echo -e "  📁 Projects:     http://localhost:3000/api/projects"
 echo ""
-echo -e "${YELLOW}Process IDs:${NC}"
-echo -e "  Backend:  $BACKEND_PID"
-echo -e "  Frontend: $FRONTEND_PID"
+echo -e "${YELLOW}Process ID: $APP_PID${NC}"
 echo ""
-echo -e "${YELLOW}To stop services, run: kill $BACKEND_PID $FRONTEND_PID${NC}"
-echo -e "${YELLOW}Or use: pkill -f 'uvicorn.*main:app' && pkill -f 'npm run dev'${NC}"
+echo -e "${YELLOW}To stop the service, run: kill $APP_PID${NC}"
+echo -e "${YELLOW}Or use: pkill -f 'next dev'${NC}"
 
-# Save PIDs to a file for easy cleanup
-echo "$BACKEND_PID" > .vc_pids
-echo "$FRONTEND_PID" >> .vc_pids
+# Save PID to a file for easy cleanup
+echo "$APP_PID" > .vc_pids
 
 echo ""
 echo -e "${GREEN}Happy coding! 🚀${NC}"
-
-
