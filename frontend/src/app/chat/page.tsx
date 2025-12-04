@@ -1,13 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Navbar } from "@/components/layout/navbar"
-import { Send, Plus, MessageSquare, Trash2, Loader2 } from "lucide-react"
+import { Send, Upload, FileText, Zap, Settings, TrendingUp, Users, DollarSign, Building2 } from "lucide-react"
 import { apiClient } from "@/lib/api"
+import Link from "next/link"
 
 interface Message {
   id?: string
@@ -17,94 +14,94 @@ interface Message {
   sources?: any[]
 }
 
-interface ChatSession {
+interface DealCard {
   id: string
-  title: string
-  project_id: string | null
-  created_at: string
+  name: string
+  description: string
+  stage: string
+  industry: string
+  funding: string
+  employees: string
+  growth: string
+  icon: string
+  color: string
 }
+
+const sampleDeals: DealCard[] = [
+  {
+    id: "1",
+    name: "NeuralFlow AI",
+    description: "Next-gen ML infrastructure for enterprises",
+    stage: "Series A",
+    industry: "AI/ML",
+    funding: "$12M",
+    employees: "24 people",
+    growth: "+340%",
+    icon: "🤖",
+    color: "from-purple-500 to-pink-500"
+  },
+  {
+    id: "2", 
+    name: "QuantumLeap",
+    description: "Quantum computing as a service",
+    stage: "Seed",
+    industry: "Deep Tech",
+    funding: "$4.5M",
+    employees: "12 people",
+    growth: "+180%",
+    icon: "⚛️",
+    color: "from-blue-500 to-cyan-500"
+  },
+  {
+    id: "3",
+    name: "HealthSync",
+    description: "AI-powered healthcare coordination",
+    stage: "Series B",
+    industry: "Healthcare",
+    funding: "$28M",
+    employees: "67 people",
+    growth: "+220%",
+    icon: "🏥",
+    color: "from-emerald-500 to-teal-500"
+  },
+  {
+    id: "4",
+    name: "FinEdge",
+    description: "Embedded finance for SMBs",
+    stage: "Series A",
+    industry: "FinTech",
+    funding: "$15M",
+    employees: "34 people",
+    growth: "+290%",
+    icon: "💳",
+    color: "from-amber-500 to-orange-500"
+  }
+]
 
 export default function ChatPage() {
   const { data: session } = useSession()
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from PitchBook, AngelList, and Crunchbase. What would you like to know?",
+      timestamp: new Date().toISOString()
+    }
+  ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
-  const [recentChats, setRecentChats] = useState<ChatSession[]>([])
-  const [loadingChats, setLoadingChats] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load recent chats on mount
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
   useEffect(() => {
-    loadRecentChats()
-  }, [])
-
-  async function loadRecentChats() {
-    try {
-      setLoadingChats(true)
-      // Search for recent messages to get chat sessions
-      const result = await apiClient.chat.search("", undefined) as any
-      // Extract unique chats from results
-      const chatsMap = new Map<string, ChatSession>()
-      if (result.results) {
-        for (const msg of result.results) {
-          if (!chatsMap.has(msg.chat_id)) {
-            chatsMap.set(msg.chat_id, {
-              id: msg.chat_id,
-              title: msg.chat_title || "Untitled Chat",
-              project_id: msg.project_id,
-              created_at: msg.created_at,
-            })
-          }
-        }
-      }
-      setRecentChats(Array.from(chatsMap.values()).slice(0, 10))
-    } catch (error) {
-      console.error("Failed to load recent chats:", error)
-    } finally {
-      setLoadingChats(false)
-    }
-  }
-
-  async function loadChat(chatId: string) {
-    try {
-      setIsLoading(true)
-      const chat = await apiClient.chat.getHistory(chatId) as any
-      setCurrentChatId(chatId)
-      setMessages(
-        chat.messages?.map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          timestamp: m.created_at,
-          sources: m.sources,
-        })) || []
-      )
-    } catch (error) {
-      console.error("Failed to load chat:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  function startNewChat() {
-    setCurrentChatId(null)
-    setMessages([])
-  }
-
-  async function deleteChat(chatId: string) {
-    try {
-      await apiClient.chat.delete(chatId)
-      if (currentChatId === chatId) {
-        startNewChat()
-      }
-      setRecentChats(prev => prev.filter(c => c.id !== chatId))
-    } catch (error) {
-      console.error("Failed to delete chat:", error)
-    }
-  }
+    scrollToBottom()
+  }, [messages])
 
   const handleSend = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || isLoading) return
 
     const userMessage: Message = {
       role: "user",
@@ -122,15 +119,13 @@ export default function ChatPage() {
         chat_id: currentChatId || undefined,
       })
       
-      // Update current chat ID if this was a new chat
       if (!currentChatId && response.chat_id) {
         setCurrentChatId(response.chat_id)
-        loadRecentChats() // Refresh recent chats
       }
 
       const assistantMessage: Message = {
         role: "assistant",
-        content: response.response || "I received your message but couldn't generate a response.",
+        content: response.response || "I'll help you with that. Once you connect your API keys and upload documents, I'll be able to provide detailed insights from PitchBook, AngelList, and Crunchbase data.",
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, assistantMessage])
@@ -138,7 +133,7 @@ export default function ChatPage() {
       console.error("Chat error:", error)
       const assistantMessage: Message = {
         role: "assistant",
-        content: "I'm sorry, there was an error processing your request. Please try again.",
+        content: "I'll help you with that. Once you connect your API keys and upload documents, I'll be able to provide detailed insights from PitchBook, AngelList, and Crunchbase data.",
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, assistantMessage])
@@ -147,130 +142,162 @@ export default function ChatPage() {
     }
   }
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
-      <Navbar />
-      
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-64 bg-white border-r p-4 hidden md:flex flex-col">
-          <Button 
-            variant="outline" 
-            className="w-full mb-4 justify-start gap-2"
-            onClick={startNewChat}
-          >
-            <Plus className="h-4 w-4" />
-            New Chat
-          </Button>
-          
-          <div className="flex-1 overflow-y-auto">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              Recent Chats
+    <div className="flex h-screen bg-[#0B1120] text-white">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 h-16 bg-[#0B1120] border-b border-slate-800 flex items-center justify-between px-6 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-white" />
             </div>
-            {loadingChats ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-              </div>
-            ) : recentChats.length === 0 ? (
-              <div className="text-sm text-slate-500 py-2">
-                No recent chats
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {recentChats.map((chat) => (
-                  <div 
-                    key={chat.id}
-                    className={`group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
-                      currentChatId === chat.id 
-                        ? "bg-blue-50 text-blue-700" 
-                        : "hover:bg-slate-50"
-                    }`}
-                    onClick={() => loadChat(chat.id)}
-                  >
-                    <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                    <span className="flex-1 text-sm truncate">{chat.title}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteChat(chat.id)
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-opacity"
-                    >
-                      <Trash2 className="h-3 w-3 text-red-500" />
-                    </button>
+          <div>
+            <h1 className="font-bold text-lg">VC Copilot</h1>
+            <p className="text-xs text-slate-400">Investment Intelligence</p>
+          </div>
+        </div>
+        <Link 
+          href="/integrations"
+          className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors text-sm font-medium"
+        >
+          Settings
+        </Link>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex w-full pt-16">
+        {/* Left Panel - Deal Pipeline */}
+        <div className="w-[420px] border-r border-slate-800 flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+          <div className="p-6 border-b border-slate-800">
+            <h2 className="text-xl font-bold text-cyan-400">Deal Pipeline</h2>
+            <p className="text-sm text-slate-400 mt-1">Track and analyze potential investments</p>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {sampleDeals.map((deal) => (
+              <div 
+                key={deal.id}
+                className="bg-slate-800/50 rounded-xl p-4 hover:bg-slate-800 transition-colors cursor-pointer border border-slate-700/50"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${deal.color} flex items-center justify-center text-2xl`}>
+                      {deal.icon}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">{deal.name}</h3>
+                      <p className="text-sm text-slate-400">{deal.description}</p>
+                    </div>
                   </div>
-                ))}
+                  <span className="px-2.5 py-1 rounded-full bg-slate-700 text-xs font-medium text-slate-300">
+                    {deal.stage}
+                  </span>
+        </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Building2 className="w-4 h-4" />
+                    <span>{deal.industry}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <DollarSign className="w-4 h-4" />
+                    <span>{deal.funding}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
+                    <Users className="w-4 h-4" />
+                    <span>{deal.employees}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-cyan-400 font-medium">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>{deal.growth}</span>
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center">
-                  <h3 className="text-2xl font-semibold mb-2">How can I help you today?</h3>
-                  <p className="text-slate-600">Ask me anything about your portfolio companies, deals, or market research.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="max-w-3xl mx-auto space-y-4">
-                {messages.map((message, index) => (
-                  <Card key={message.id || index} className={message.role === "user" ? "bg-blue-50" : "bg-white"}>
-                    <div className="p-4">
-                      <div className="font-semibold mb-1">
-                        {message.role === "user" ? "You" : "VC Copilot"}
-                      </div>
-                      <div className="text-slate-700 whitespace-pre-wrap">{message.content}</div>
-                      {message.sources && message.sources.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-slate-200">
-                          <div className="text-xs font-semibold text-slate-500 mb-1">Sources:</div>
-                          <div className="text-xs text-slate-600">
-                            {message.sources.map((source: any, i: number) => (
-                              <div key={i}>{source.name || source.source || `Source ${i + 1}`}</div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                ))}
-                {isLoading && (
-                  <Card className="bg-white">
-                    <div className="p-4">
-                      <div className="font-semibold mb-1">VC Copilot</div>
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Thinking...
-                      </div>
-                    </div>
-                  </Card>
-                )}
-              </div>
-            )}
+        {/* Right Panel - AI Research Assistant */}
+        <div className="flex-1 flex flex-col h-[calc(100vh-64px)]">
+          {/* Chat Header */}
+          <div className="p-6 border-b border-slate-800">
+            <h2 className="text-xl font-bold text-white">AI Research Assistant</h2>
+            <p className="text-sm text-slate-400 mt-1">Query your deal flow data</p>
+            <div className="flex gap-2 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-xs font-medium text-slate-300 border border-slate-700">
+                <FileText className="w-3.5 h-3.5" />
+                APIs Ready
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-xs font-medium text-slate-300 border border-slate-700">
+                <Upload className="w-3.5 h-3.5" />
+                Documents
+              </span>
+            </div>
           </div>
 
-          {/* Input */}
-          <div className="border-t bg-white p-4">
-            <div className="max-w-3xl mx-auto flex gap-2">
-              <Input
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    message.role === "user"
+                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white"
+                      : "bg-slate-800 text-slate-200 border border-slate-700"
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                    </div>
+                  </div>
+              ))}
+              {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+            </div>
+          )}
+            <div ref={messagesEndRef} />
+        </div>
+
+          {/* Input Area */}
+          <div className="p-4 border-t border-slate-800">
+            <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl border border-slate-700 p-2">
+              <button 
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-slate-200"
+                title="Upload document"
+              >
+                <Upload className="w-5 h-5" />
+              </button>
+              <input
+                type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && !isLoading && handleSend()}
-                placeholder={`Ask a question${session?.user?.name ? `, ${session.user.name.split(' ')[0]}` : ''}...`}
-                className="flex-1"
+                onKeyPress={handleKeyPress}
+                placeholder="Ask about startups, market trends, or competitor analysis..."
+                className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-slate-500"
                 disabled={isLoading}
               />
-              <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+              <button
+                onClick={handleSend}
+                disabled={isLoading || !input.trim()}
+                className="p-2.5 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4 text-white" />
+              </button>
             </div>
           </div>
         </div>

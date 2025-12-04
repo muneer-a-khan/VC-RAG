@@ -199,16 +199,16 @@ export default function ProjectsPage() {
           </div>
         ) : (
           /* Projects Grid */
-          <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
             {projects.map((project) => (
               <Card 
                 key={project.id} 
                 className="hover:shadow-lg transition-shadow cursor-pointer group"
               >
-                <CardHeader>
+            <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <Folder className="h-5 w-5 text-blue-600" />
+              <div className="flex items-center gap-2">
+                <Folder className="h-5 w-5 text-blue-600" />
                       <CardTitle className="text-lg">{project.name}</CardTitle>
                     </div>
                     <button
@@ -220,10 +220,10 @@ export default function ProjectsPage() {
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </button>
-                  </div>
+              </div>
                   <CardDescription>{getProjectTypeLabel(project.type)}</CardDescription>
-                </CardHeader>
-                <CardContent>
+            </CardHeader>
+            <CardContent>
                   {project.description && (
                     <p className="text-sm text-slate-600 mb-3">{project.description}</p>
                   )}
@@ -237,23 +237,23 @@ export default function ProjectsPage() {
                       {project.chat_count} chats
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+            </CardContent>
+          </Card>
             ))}
 
-            {/* Add Project Card */}
+          {/* Add Project Card */}
             <Card 
               className="border-dashed hover:border-solid hover:shadow-lg transition-all cursor-pointer"
               onClick={() => setShowNewProject(true)}
             >
-              <CardContent className="flex items-center justify-center h-full min-h-[200px]">
-                <div className="text-center">
-                  <Plus className="h-12 w-12 mx-auto mb-2 text-slate-400" />
-                  <p className="text-sm text-slate-600">Create New Project</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            <CardContent className="flex items-center justify-center h-full min-h-[200px]">
+              <div className="text-center">
+                <Plus className="h-12 w-12 mx-auto mb-2 text-slate-400" />
+                <p className="text-sm text-slate-600">Create New Project</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         )}
       </div>
     </div>

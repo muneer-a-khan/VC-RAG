@@ -1,13 +1,10 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { SessionProvider } from "@/components/providers/session-provider"
 
-const inter = Inter({ subsets: ["latin"] })
-
 export const metadata: Metadata = {
-  title: "VC Copilot",
-  description: "AI-powered copilot for venture capital professionals",
+  title: "VC Copilot - AI-Powered Due Diligence Platform",
+  description: "Harness the power of AI to aggregate data, uncover critical insights, and manage your portfolio with unparalleled efficiency.",
 }
 
 export default function RootLayout({
@@ -16,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body>
         <SessionProvider>
           {children}
         </SessionProvider>
@@ -25,4 +22,3 @@ export default function RootLayout({
     </html>
   )
 }
-
