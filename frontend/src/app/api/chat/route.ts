@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { similaritySearch, generateResponse } from "@/lib/services/rag-service"
 
 export const dynamic = 'force-dynamic'
 
@@ -64,46 +65,62 @@ export async function POST(request: NextRequest) {
     let assistantResponse: string
     let sources: any[] = []
 
-    // Check if OpenAI is configured
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        // Import RAG service dynamically to avoid issues when OpenAI is not configured
-        const { generateResponse, similaritySearch, generateEmbedding } = await import("@/lib/services/rag-service")
+    try {
+      // Find user's upload project for searching
+      const uploadProject = await prisma.project.findFirst({
+        where: {
+          userId: session.user.id,
+          name: "Chat Uploads",
+        },
+      })
+
+      // Search in uploaded documents
+      let context: any[] = []
+      
+      // Search in specific project if provided, otherwise search in uploads
+      const searchProjectId = project_id || uploadProject?.id
+      
+      if (searchProjectId) {
+        context = await similaritySearch(message, searchProjectId)
+      } else {
+        // Search across all user's projects
+        const userProjects = await prisma.project.findMany({
+          where: { userId: session.user.id },
+          select: { id: true },
+        })
         
-        // If project is specified, try to get relevant context
-        let context: any[] = []
-        if (project_id) {
-          try {
-            const queryEmbedding = await generateEmbedding(message)
-            context = await similaritySearch(queryEmbedding, project_id)
-          } catch (e) {
-            console.warn("Vector search failed, continuing without context:", e)
-          }
+        // Search in each project and combine results
+        for (const project of userProjects) {
+          const projectResults = await similaritySearch(message, project.id, 3)
+          context.push(...projectResults)
         }
-
-        // Format chat history for the RAG service
-        const formattedHistory = chatHistory.slice(-8).map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        }))
-
-        // Generate response using RAG
-        assistantResponse = await generateResponse(message, context, formattedHistory)
         
-        // Format sources for response
-        sources = context.map((doc, i) => ({
-          id: i + 1,
-          source: doc.metadata?.source || "Document",
-          content: doc.content?.substring(0, 200) + "...",
-        }))
-      } catch (ragError) {
-        console.error("RAG error:", ragError)
-        // Fallback to placeholder
-        assistantResponse = generatePlaceholderResponse(message)
+        // Sort combined results by similarity
+        context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
+        context = context.slice(0, 5)
       }
-    } else {
-      // No OpenAI configured - use placeholder
-      assistantResponse = generatePlaceholderResponse(message)
+
+      // Format chat history for the RAG service
+      const formattedHistory = chatHistory.slice(-8).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }))
+
+      // Generate response using DeepSeek via RAG service
+      assistantResponse = await generateResponse(message, context, formattedHistory)
+      
+      // Format sources for response
+      sources = context.map((doc, i) => ({
+        id: i + 1,
+        source: doc.metadata?.source || doc.metadata?.title || "Document",
+        content: doc.content?.substring(0, 200) + "...",
+        similarity: doc.similarity,
+      }))
+    } catch (ragError) {
+      console.error("RAG error:", ragError)
+      assistantResponse = `I apologize, but I encountered an error processing your request. Please try again.
+
+If you've uploaded files, make sure they contain readable text content.`
     }
 
     // Save assistant message
@@ -181,17 +198,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-function generatePlaceholderResponse(message: string): string {
-  return `Thank you for your message. This is a placeholder response.
-
-In the full implementation with OpenAI configured, this would:
-1. Search relevant documents using vector embeddings
-2. Pass context to an LLM (GPT-4, Claude, etc.)
-3. Return an intelligent, context-aware response
-
-Your message was: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"
-
-To enable AI responses, set the OPENAI_API_KEY environment variable.`
 }
