@@ -156,16 +156,18 @@ Please provide a detailed, accurate response based on the context provided. If y
 
 function generateFallbackResponse(query: string, context: DocumentChunk[]): string {
   if (context.length === 0) {
-    return `I don't have any relevant documents to answer your question: "${query}"
+    return `I don't have any relevant documents to answer your question: **"${query}"**
 
 Please upload some files first, and I'll be able to help you find information from them.`
   }
 
-  let response = `Based on the available documents, here's what I found relevant to your query:\n\n`
-  
+  let response = `## Relevant Information Found
+
+Based on the available documents, here are the most relevant excerpts for your query:\n\n`
+
   context.slice(0, 3).forEach((doc, i) => {
     const source = doc.metadata?.source || doc.metadata?.title || 'Document'
-    response += `**Source ${i + 1}: ${source}**\n`
+    response += `### Source ${i + 1}: ${source}\n`
     response += `${doc.content.substring(0, 500)}${doc.content.length > 500 ? '...' : ''}\n\n`
   })
 
@@ -180,6 +182,13 @@ function buildSystemPrompt(): string {
 3. Be concise but thorough in your analysis
 4. If you don't have enough information to answer confidently, say so
 5. When citing specific data points, mention which source they come from
+
+Format your responses using proper markdown for better readability:
+- Use headings (##, ###) for organizing your response
+- Use **bold** for emphasis and key terms
+- Use bullet points or numbered lists when appropriate
+- Use proper paragraph breaks
+- Keep technical terms and source names in appropriate formatting
 
 Always base your responses on the provided context. If the context doesn't contain relevant information, clearly state that.`
 }

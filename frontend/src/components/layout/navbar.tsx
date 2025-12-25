@@ -7,48 +7,51 @@ import { cn } from "@/lib/utils"
 import { UserMenu } from "@/components/auth/user-menu"
 
 const navItems = [
-  { name: "Chat", href: "/chat" },
+  { name: "Product", href: "/chat" },
+  { name: "Pricing", href: "#" },
   { name: "About", href: "/about" },
+  { name: "Resources", href: "#" },
+]
+
+const authNavItems = [
+  { name: "Dashboard", href: "/chat" },
+  { name: "Deals", href: "/chat" },
   { name: "Projects", href: "/projects" },
   { name: "Integrations", href: "/integrations" },
 ]
-
-function Logo() {
-  return (
-    <svg className="size-6 text-primary" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <path d="M4 42.4379C4 42.4379 14.0962 36.0744 24 41.1692C35.0664 46.8624 44 42.2078 44 42.2078L44 7.01134C44 7.01134 35.068 11.6577 24.0031 5.96913C14.0971 0.876274 4 7.27094 4 7.27094L4 42.4379Z" fill="currentColor" />
-    </svg>
-  )
-}
 
 export function Navbar() {
   const pathname = usePathname()
   const { data: session } = useSession()
 
+  const items = session ? authNavItems : navItems
+
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-center border-b border-white/10 bg-background-dark/80 backdrop-blur-sm px-4 md:px-8">
-      <div className="flex h-16 w-full max-w-7xl items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-border-dark bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-4">
-            <Logo />
-            <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">VC Copilot</h2>
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+              <span className="material-symbols-outlined text-xl">analytics</span>
+            </div>
+            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">VC Copilot</span>
           </Link>
         </div>
 
-        {/* Nav Links - Centered */}
-        <nav className="hidden md:flex flex-1 justify-center gap-8">
-          {navItems.map((item) => {
+        {/* Nav Links */}
+        <nav className="hidden md:flex items-center gap-8">
+          {items.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "text-sm font-medium leading-normal transition-colors",
+                  "text-sm font-medium transition-colors",
                   isActive
                     ? "text-primary"
-                    : "text-gray-300 hover:text-primary"
+                    : "text-slate-600 dark:text-gray-300 hover:text-primary dark:hover:text-white"
                 )}
               >
                 {item.name}
@@ -57,41 +60,32 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Sign In / User Menu */}
-        <div className="flex items-center gap-4">
+        {/* Right side */}
+        <div className="flex items-center gap-3">
           {session ? (
-            <UserMenu />
+            <>
+              <button className="hidden sm:flex p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors relative">
+                <span className="material-symbols-outlined text-xl">notifications</span>
+                <span className="absolute top-2 right-2 size-2 bg-primary rounded-full border border-background-dark"></span>
+              </button>
+              <UserMenu />
+            </>
           ) : (
-            <Link
-              href="/login"
-              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:opacity-90 transition-opacity"
-            >
-              <span className="truncate">Sign In</span>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-white/10 bg-background-dark/95 backdrop-blur-sm">
-        <div className="flex justify-around py-3">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-            return (
+            <>
               <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-1 text-xs font-medium",
-                  isActive
-                    ? "text-primary"
-                    : "text-gray-400"
-                )}
+                href="/login"
+                className="hidden sm:inline-flex text-sm font-semibold text-slate-600 dark:text-white hover:text-primary transition-colors"
               >
-                {item.name}
+                Log in
               </Link>
-            )
-          })}
+              <Link
+                href="/register"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow transition-transform hover:scale-105 hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                Get Started
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
