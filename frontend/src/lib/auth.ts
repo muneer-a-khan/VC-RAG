@@ -74,29 +74,29 @@ export const authOptions: NextAuthOptions = {
       // For OAuth providers, create/sync user in database
       if (account && account.provider !== "credentials" && token.email) {
         try {
-          // Find or create user
-          let dbUser = await prisma.user.findUnique({
+          // Find or create user using upsert to avoid race conditions
+          const dbUser = await prisma.user.upsert({
             where: { email: token.email },
+            update: {
+              // Update name if changed
+              fullName: token.name || undefined,
+            },
+            create: {
+              email: token.email,
+              hashedPassword: await bcrypt.hash(
+                Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16),
+                12
+              ),
+              fullName: token.name || "User",
+            },
           })
-
-          if (!dbUser) {
-            // Create new user for OAuth
-            const randomPassword = Math.random().toString(36).slice(-16)
-            const hashedPassword = await bcrypt.hash(randomPassword, 12)
-
-            dbUser = await prisma.user.create({
-              data: {
-                email: token.email,
-                hashedPassword,
-                fullName: token.name || "User",
-              },
-            })
-          }
 
           token.id = dbUser.id
           token.organization = dbUser.organization || undefined
         } catch (error) {
           console.error("OAuth user sync failed:", error)
+          // Don't silently fail - throw to prevent invalid session
+          throw new Error("Failed to create user account. Please try again.")
         }
       }
 
@@ -105,8 +105,14 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (session.user) {
-        // Safely assign token properties (handle cases where token.id might not exist)
-        ;(session.user as any).id = token.id || token.sub || ""
+        // Only assign id if we have a valid database user id
+        if (token.id && typeof token.id === "string") {
+          ;(session.user as any).id = token.id
+        } else {
+          // This shouldn't happen, but if it does, the user needs to re-authenticate
+          console.error("Session missing valid user id, token:", { id: token.id, sub: token.sub })
+          ;(session.user as any).id = ""
+        }
         ;(session.user as any).organization = token.organization || null
         ;(session as any).accessToken = token.accessToken || ""
       }
