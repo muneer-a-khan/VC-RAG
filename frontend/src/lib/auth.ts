@@ -5,6 +5,48 @@ import GoogleProvider from "next-auth/providers/google"
 import { prisma } from "@/lib/prisma"
 import * as bcrypt from "bcryptjs"
 
+async function refreshGoogleAccessToken(token: any) {
+  try {
+    const url = "https://oauth2.googleapis.com/token"
+
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || "",
+      client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
+      grant_type: "refresh_token",
+      refresh_token: token.refreshToken || "",
+    })
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    })
+
+    const refreshedTokens = await response.json()
+
+    if (!response.ok) {
+      throw refreshedTokens
+    }
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      // Google may not always return a new refresh token
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      accessTokenExpires: Math.floor(Date.now() / 1000) + (refreshedTokens.expires_in ?? 3600),
+      error: undefined,
+    }
+  } catch (error) {
+    console.error("Failed to refresh Google access token", error)
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    }
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     // Credentials provider - authenticates directly with database
@@ -56,6 +98,15 @@ export const authOptions: NextAuthOptions = {
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            authorization: {
+              params: {
+                // Add Drive permission for Google Picker + file downloads
+                scope: "openid email profile https://www.googleapis.com/auth/drive.readonly",
+                // Ask for a refresh token on first consent
+                access_type: "offline",
+                prompt: "consent",
+              },
+            },
           }),
         ]
       : []),
@@ -73,6 +124,13 @@ export const authOptions: NextAuthOptions = {
 
       // For OAuth providers, create/sync user in database
       if (account && account.provider !== "credentials" && token.email) {
+        // Persist OAuth tokens (needed for Google Drive Picker + downloads)
+        if (account.provider === "google") {
+          ;(token as any).accessToken = (account as any).access_token
+          ;(token as any).refreshToken = (account as any).refresh_token ?? (token as any).refreshToken
+          ;(token as any).accessTokenExpires = (account as any).expires_at
+        }
+
         try {
           // Find or create user using upsert to avoid race conditions
           const dbUser = await prisma.user.upsert({
@@ -100,6 +158,13 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // Refresh Google access token if it's expired (or about to expire)
+      const accessTokenExpires = (token as any).accessTokenExpires
+      const refreshToken = (token as any).refreshToken
+      if (refreshToken && accessTokenExpires && Date.now() > accessTokenExpires * 1000 - 60_000) {
+        token = await refreshGoogleAccessToken(token)
+      }
+
       return token
     },
 
@@ -115,6 +180,7 @@ export const authOptions: NextAuthOptions = {
         }
         ;(session.user as any).organization = token.organization || null
         ;(session as any).accessToken = token.accessToken || ""
+        ;(session as any).authError = (token as any).error || null
       }
       return session
     },
@@ -154,4 +220,3 @@ export async function getCurrentUser() {
   const session = await getSession()
   return session?.user
 }
-

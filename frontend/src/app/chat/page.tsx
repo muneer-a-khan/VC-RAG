@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useSession } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { apiClient } from "@/lib/api"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
@@ -41,7 +41,49 @@ interface UploadedFile {
   status: string
   created_at: string
 }
+declare global {
+  interface Window {
+    gapi: any
+    google: any
+  }
+}
 
+async function loadGapiScript() {
+  if (typeof window === "undefined") return
+  if (window.gapi && window.google?.picker) return
+
+  await new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(
+      'script[src="https://apis.google.com/js/api.js"]'
+    )
+    if (existing) {
+      existing.addEventListener("load", () => resolve())
+      return
+    }
+
+    const s = document.createElement("script")
+    s.src = "https://apis.google.com/js/api.js"
+    s.async = true
+    s.onload = () => resolve()
+    s.onerror = () => reject(new Error("Failed to load Google API script"))
+    document.body.appendChild(s)
+  })
+}
+
+function isGoogleNativeMime(mimeType: string) {
+  return mimeType?.startsWith("application/vnd.google-apps")
+}
+
+function exportMimeForGoogleNative(mimeType: string) {
+  // Good defaults for ingestion
+  if (mimeType === "application/vnd.google-apps.spreadsheet") {
+    return { exportMime: "text/csv", extension: "csv" }
+  }
+  if (mimeType === "application/vnd.google-apps.presentation") {
+    return { exportMime: "application/pdf", extension: "pdf" }
+  }
+  return { exportMime: "application/pdf", extension: "pdf" } // Docs etc.
+}
 const sampleDeals: DealCard[] = [
   {
     id: "1",
@@ -99,6 +141,7 @@ export default function ChatPage() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDrivePicking, setIsDrivePicking] = useState(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -256,7 +299,145 @@ export default function ChatPage() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
+async function uploadBlobsAsFiles(files: Array<{ filename: string; blob: Blob }>) {
+  const formData = new FormData()
+  for (const f of files) {
+    const fileObj = new File([f.blob], f.filename, {
+      type: f.blob.type || "application/octet-stream",
+    })
+    formData.append("files", fileObj)
+  }
 
+  const response = await fetch("/api/chat/upload", {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || "Upload failed")
+  }
+
+  return await response.json()
+}
+
+async function downloadDriveFile(
+  accessToken: string,
+  file: { id: string; name: string; mimeType: string }
+) {
+  const headers = { Authorization: `Bearer ${accessToken}` }
+
+  if (isGoogleNativeMime(file.mimeType)) {
+    const { exportMime, extension } = exportMimeForGoogleNative(file.mimeType)
+    const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(
+      file.id
+    )}/export?mimeType=${encodeURIComponent(exportMime)}`
+    const res = await fetch(url, { headers })
+    if (!res.ok) throw new Error(`Failed to export ${file.name}`)
+    const blob = await res.blob()
+    const filename = file.name.endsWith(`.${extension}`) ? file.name : `${file.name}.${extension}`
+    return { filename, blob }
+  }
+
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.id)}?alt=media`
+  const res = await fetch(url, { headers })
+  if (!res.ok) throw new Error(`Failed to download ${file.name}`)
+  const blob = await res.blob()
+  return { filename: file.name, blob }
+}
+
+async function openDrivePicker() {
+  const accessToken = (session as any)?.accessToken
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY
+
+  if (!apiKey) {
+    alert("Missing NEXT_PUBLIC_GOOGLE_API_KEY in env")
+    return
+  }
+
+  if (!accessToken) {
+    const should = confirm("To import from Google Drive, you need to sign in with Google. Continue?")
+    if (should) {
+      await signIn("google", { callbackUrl: "/chat" })
+    }
+    return
+  }
+
+  setIsDrivePicking(true)
+
+  try {
+    await loadGapiScript()
+
+    window.gapi.load("picker", () => {
+      const google = window.google
+
+      const view = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(true)
+
+      const picker = new google.picker.PickerBuilder()
+        .addView(view)
+        .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+        .setOAuthToken(accessToken)
+        .setDeveloperKey(apiKey)
+        .setCallback(async (data: any) => {
+          if (data.action === google.picker.Action.CANCEL) {
+            setIsDrivePicking(false)
+            return
+          }
+          if (data.action !== google.picker.Action.PICKED) return
+
+          const picked = (data.docs || []).map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            mimeType: d.mimeType,
+          }))
+
+          if (!picked.length) {
+            setIsDrivePicking(false)
+            return
+          }
+
+          setIsUploading(true)
+
+          try {
+            const blobs: Array<{ filename: string; blob: Blob }> = []
+            for (const f of picked) {
+              blobs.push(await downloadDriveFile(accessToken, f))
+            }
+
+            const result = await uploadBlobsAsFiles(blobs)
+            await loadUploadedFiles()
+
+            const uploadMessage: Message = {
+              role: "assistant",
+              content: `Successfully imported ${result.files_uploaded ?? blobs.length} file(s) from Google Drive. You can now ask questions about the content of these files.${
+                result.errors?.length ? `\n\nWarnings:\n${result.errors.join("\n")}` : ""
+              }`,
+              timestamp: new Date().toISOString(),
+            }
+            setMessages((prev) => [...prev, uploadMessage])
+          } catch (err: any) {
+            console.error("Drive import error:", err)
+            const errorMessage: Message = {
+              role: "assistant",
+              content: `Failed to import from Google Drive: ${err.message || "Unknown error"}`,
+              timestamp: new Date().toISOString(),
+            }
+            setMessages((prev) => [...prev, errorMessage])
+          } finally {
+            setIsUploading(false)
+            setIsDrivePicking(false)
+          }
+        })
+        .build()
+
+      picker.setVisible(true)
+    })
+  } catch (e) {
+    console.error(e)
+    setIsDrivePicking(false)
+    alert("Failed to open Google Drive picker")
+  }
+}
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
@@ -622,6 +803,14 @@ export default function ChatPage() {
                 >
                   <span className="material-symbols-outlined text-[18px]">attach_file</span>
                 </button>
+                <button
+  onClick={openDrivePicker}
+  disabled={isDrivePicking || isUploading}
+  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+  title="Upload from Google Drive"
+>
+  <span className="material-symbols-outlined text-[18px]">cloud</span>
+</button>
                 <button className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded transition-colors" title="Format Text">
                   <span className="material-symbols-outlined text-[18px]">format_bold</span>
                 </button>
