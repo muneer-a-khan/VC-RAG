@@ -1,7 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+<<<<<<< HEAD
     "lib": ["dom", "dom.iterable", "esnext"],
+=======
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+>>>>>>> d914165 (Initial local Coreflow project)
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,6 +27,7 @@
       }
     ],
     "paths": {
+<<<<<<< HEAD
       "@/*": ["./src/*"]
     }
   },
@@ -26,3 +35,21 @@
   "exclude": ["node_modules"]
 }
 
+=======
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "expo/tsconfig.base"
+}
+>>>>>>> d914165 (Initial local Coreflow project)

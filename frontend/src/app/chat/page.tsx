@@ -125,7 +125,11 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
+<<<<<<< HEAD
       content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from PitchBook, AngelList, and Crunchbase. What would you like to know?",
+=======
+      content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from your integrations. What would you like to know?",
+>>>>>>> d914165 (Initial local Coreflow project)
       timestamp: new Date().toISOString()
     }
   ])
@@ -142,6 +146,10 @@ export default function ChatPage() {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDrivePicking, setIsDrivePicking] = useState(false)
+<<<<<<< HEAD
+=======
+  const [isDeepMode, setIsDeepMode] = useState(false)
+>>>>>>> d914165 (Initial local Coreflow project)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -276,7 +284,11 @@ export default function ChatPage() {
     setMessages([
       {
         role: "assistant",
+<<<<<<< HEAD
         content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from PitchBook, AngelList, and Crunchbase. What would you like to know?",
+=======
+        content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from your integrations. What would you like to know?",
+>>>>>>> d914165 (Initial local Coreflow project)
         timestamp: new Date().toISOString()
       }
     ])
@@ -448,6 +460,7 @@ async function openDrivePicker() {
     }
 
     setMessages(prev => [...prev, userMessage])
+<<<<<<< HEAD
     setInput("")
     setIsLoading(true)
 
@@ -477,12 +490,158 @@ async function openDrivePicker() {
         timestamp: new Date().toISOString()
       }
       setMessages(prev => [...prev, assistantMessage])
+=======
+    const userInput = input
+    setInput("")
+    setIsLoading(true)
+
+    // Create a placeholder assistant message for streaming
+    const placeholderMessage: Message = {
+      role: "assistant",
+      content: "",
+      timestamp: new Date().toISOString(),
+    }
+    setMessages(prev => [...prev, placeholderMessage])
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userInput,
+          chat_id: currentChatId || undefined,
+          stream: true,
+          mode: isDeepMode ? "deep" : "fast",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const contentType = response.headers.get("content-type") || ""
+
+      // Handle SSE streaming response
+      if (contentType.includes("text/event-stream") && response.body) {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulated = ""
+        let streamSources: any[] = []
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const text = decoder.decode(value, { stream: true })
+          const lines = text.split("\n")
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue
+            const jsonStr = line.slice(6).trim()
+            if (!jsonStr) continue
+
+            try {
+              const event = JSON.parse(jsonStr)
+
+              if (event.type === "metadata") {
+                if (!currentChatId && event.chat_id) {
+                  setCurrentChatId(event.chat_id)
+                  loadRecentChats()
+                }
+                streamSources = event.sources || []
+              } else if (event.type === "text") {
+                accumulated += event.content
+                // Update the last message with accumulated content
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const lastMsg = updated[updated.length - 1]
+                  if (lastMsg && lastMsg.role === "assistant") {
+                    updated[updated.length - 1] = {
+                      ...lastMsg,
+                      content: accumulated,
+                      sources: streamSources,
+                    }
+                  }
+                  return updated
+                })
+              } else if (event.type === "done") {
+                // Final update with message_id
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const lastMsg = updated[updated.length - 1]
+                  if (lastMsg && lastMsg.role === "assistant") {
+                    updated[updated.length - 1] = {
+                      ...lastMsg,
+                      id: event.message_id,
+                      content: accumulated,
+                      sources: streamSources,
+                    }
+                  }
+                  return updated
+                })
+              } else if (event.type === "error") {
+                accumulated += event.content || "\n\nAn error occurred."
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const lastMsg = updated[updated.length - 1]
+                  if (lastMsg && lastMsg.role === "assistant") {
+                    updated[updated.length - 1] = { ...lastMsg, content: accumulated }
+                  }
+                  return updated
+                })
+              }
+            } catch {
+              // Skip malformed JSON chunks
+            }
+          }
+        }
+      } else {
+        // Handle non-streaming JSON response (fallback)
+        const data = await response.json()
+
+        if (!currentChatId && data.chat_id) {
+          setCurrentChatId(data.chat_id)
+          loadRecentChats()
+        }
+
+        setMessages(prev => {
+          const updated = [...prev]
+          const lastMsg = updated[updated.length - 1]
+          if (lastMsg && lastMsg.role === "assistant") {
+            updated[updated.length - 1] = {
+              ...lastMsg,
+              id: data.message_id,
+              content: data.response || "I couldn't generate a response. Please try uploading some documents first.",
+              sources: data.sources,
+            }
+          }
+          return updated
+        })
+      }
+    } catch (error) {
+      console.error("Chat error:", error)
+      setMessages(prev => {
+        const updated = [...prev]
+        const lastMsg = updated[updated.length - 1]
+        if (lastMsg && lastMsg.role === "assistant") {
+          updated[updated.length - 1] = {
+            ...lastMsg,
+            content: "I encountered an error processing your request. Please try again, or upload documents to get started.",
+          }
+        }
+        return updated
+      })
+>>>>>>> d914165 (Initial local Coreflow project)
     } finally {
       setIsLoading(false)
     }
   }
 
+<<<<<<< HEAD
   const handleKeyPress = (e: React.KeyboardEvent) => {
+=======
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+>>>>>>> d914165 (Initial local Coreflow project)
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -815,10 +974,26 @@ async function openDrivePicker() {
                   <span className="material-symbols-outlined text-[18px]">format_bold</span>
                 </button>
                 <div className="w-px h-4 bg-gray-700/50 mx-1"></div>
+<<<<<<< HEAD
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors">
                   <span className="material-symbols-outlined text-[14px] text-blue-400">psychology</span>
                   <span className="text-[10px] font-medium text-blue-400 uppercase">Deep Analysis Mode</span>
                 </div>
+=======
+                <button
+                  onClick={() => setIsDeepMode(!isDeepMode)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded border cursor-pointer transition-colors ${
+                    isDeepMode
+                      ? "bg-purple-500/20 border-purple-500/30 hover:bg-purple-500/30"
+                      : "bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20"
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-[14px] ${isDeepMode ? "text-purple-400" : "text-blue-400"}`}>psychology</span>
+                  <span className={`text-[10px] font-medium uppercase ${isDeepMode ? "text-purple-400" : "text-blue-400"}`}>
+                    {isDeepMode ? "Deep Mode ON" : "Deep Analysis Mode"}
+                  </span>
+                </button>
+>>>>>>> d914165 (Initial local Coreflow project)
               </div>
 
               {/* Text Area */}
@@ -826,7 +1001,11 @@ async function openDrivePicker() {
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+<<<<<<< HEAD
                   onKeyPress={handleKeyPress}
+=======
+                  onKeyDown={handleKeyDown}
+>>>>>>> d914165 (Initial local Coreflow project)
                   className="w-full bg-transparent border-0 text-white placeholder-gray-500 focus:ring-0 resize-none py-3 px-4 min-h-[52px] max-h-[200px] text-sm leading-relaxed"
                   placeholder="Ask about the deal, financials, or market risks..."
                   rows={1}

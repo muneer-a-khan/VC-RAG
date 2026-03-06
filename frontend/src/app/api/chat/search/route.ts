@@ -18,16 +18,50 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("query")
     const projectId = searchParams.get("project_id")
 
+<<<<<<< HEAD
     if (!query) {
       return NextResponse.json({ detail: "Query is required" }, { status: 400 })
     }
 
+=======
+>>>>>>> d914165 (Initial local Coreflow project)
     // Build where clause for chats
     const chatWhere: any = { userId: session.user.id }
     if (projectId) {
       chatWhere.projectId = projectId
     }
 
+<<<<<<< HEAD
+=======
+    // If no query, return recent chats directly
+    if (!query) {
+      const chats = await prisma.chat.findMany({
+        where: chatWhere,
+        include: {
+          messages: {
+            take: 1,
+            orderBy: { createdAt: "desc" },
+          },
+        },
+        take: 20,
+        orderBy: { updatedAt: "desc" },
+      })
+
+      return NextResponse.json({
+        results: chats.map((c) => ({
+          id: c.messages[0]?.id || c.id,
+          chat_id: c.id,
+          chat_title: c.title || "Untitled Chat",
+          project_id: c.projectId,
+          role: c.messages[0]?.role || "user",
+          content: c.messages[0]?.content || "",
+          created_at: c.updatedAt.toISOString(),
+        })),
+        total: chats.length,
+      })
+    }
+
+>>>>>>> d914165 (Initial local Coreflow project)
     // Search in messages
     const messages = await prisma.message.findMany({
       where: {

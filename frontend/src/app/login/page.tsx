@@ -13,9 +13,26 @@ function LoginForm() {
 
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+<<<<<<< HEAD
   const [formError, setFormError] = useState<string | null>(
     error === "CredentialsSignin" ? "Incorrect email or password. Please try again." : null
   )
+=======
+  const [formError, setFormError] = useState<string | null>(() => {
+    if (!error) return null
+    switch (error) {
+      case "CredentialsSignin":
+        return "Incorrect email or password. Please try again."
+      case "OAuthCallback":
+      case "Callback":
+        return "Sign-in failed. Please check that the database is running and try again."
+      case "OAuthAccountNotLinked":
+        return "This email is already linked to a different sign-in method."
+      default:
+        return "Something went wrong during sign-in. Please try again."
+    }
+  })
+>>>>>>> d914165 (Initial local Coreflow project)
 
   const [formData, setFormData] = useState({
     email: "",

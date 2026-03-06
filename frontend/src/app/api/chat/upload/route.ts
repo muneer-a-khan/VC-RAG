@@ -4,10 +4,15 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase"
 import { indexDocument } from "@/lib/services/rag-service"
+<<<<<<< HEAD
+=======
+import { extractTextContent } from "@/lib/services/text-extraction"
+>>>>>>> d914165 (Initial local Coreflow project)
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
+<<<<<<< HEAD
 const SUPPORTED_TEXT_TYPES = [
   'text/plain',
   'text/markdown', 
@@ -77,6 +82,8 @@ async function extractTextContent(file: File, buffer: Buffer): Promise<string> {
   return text.replace(/[^\x20-\x7E\n\r\t]/g, '').trim()
 }
 
+=======
+>>>>>>> d914165 (Initial local Coreflow project)
 // POST /api/chat/upload
 export async function POST(request: NextRequest) {
   try {
@@ -87,7 +94,11 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
+<<<<<<< HEAD
     const files = formData.getAll("files") as File[]
+=======
+    const files = formData.getAll("files") as unknown as File[]
+>>>>>>> d914165 (Initial local Coreflow project)
 
     if (!files || files.length === 0) {
       return NextResponse.json({ detail: "No files provided" }, { status: 400 })
@@ -147,7 +158,11 @@ export async function POST(request: NextRequest) {
         })
 
         // Extract text content
+<<<<<<< HEAD
         const textContent = await extractTextContent(file, buffer)
+=======
+        const textContent = await extractTextContent(file.name, file.type, buffer)
+>>>>>>> d914165 (Initial local Coreflow project)
         
         if (textContent && textContent.trim().length > 50) {
           // Index for RAG
@@ -232,7 +247,11 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
+<<<<<<< HEAD
       files: documents.map(doc => ({
+=======
+      files: documents.map((doc: any) => ({
+>>>>>>> d914165 (Initial local Coreflow project)
         id: doc.id,
         filename: doc.filename,
         file_type: doc.fileType,

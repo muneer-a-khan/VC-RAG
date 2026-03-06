@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+<<<<<<< HEAD
 
 export const dynamic = 'force-dynamic'
+=======
+import { generateProjectInsights } from "@/lib/services/rag-service"
+
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+>>>>>>> d914165 (Initial local Coreflow project)
 
 // GET /api/projects/[projectId]/intelligence - Get project intelligence/knowledge graph
 export async function GET(
@@ -39,8 +46,15 @@ export async function GET(
         vectorDocuments: {
           select: {
             id: true,
+<<<<<<< HEAD
             sourceType: true,
             chunkIndex: true,
+=======
+            content: true,
+            sourceType: true,
+            chunkIndex: true,
+            metadata: true,
+>>>>>>> d914165 (Initial local Coreflow project)
             createdAt: true,
           },
         },
@@ -51,7 +65,11 @@ export async function GET(
       return NextResponse.json({ detail: "Project not found" }, { status: 404 })
     }
 
+<<<<<<< HEAD
     // Calculate insights and statistics
+=======
+    // Calculate statistics
+>>>>>>> d914165 (Initial local Coreflow project)
     const documentsByType: Record<string, number> = {}
     for (const doc of project.documents) {
       const type = doc.fileType || "unknown"
@@ -64,6 +82,76 @@ export async function GET(
       vectorChunksBySource[source] = (vectorChunksBySource[source] || 0) + 1
     }
 
+<<<<<<< HEAD
+=======
+    // Check if we should generate insights (only if there are documents)
+    const { searchParams } = new URL(request.url)
+    const refresh = searchParams.get("refresh") === "true"
+
+    let insights: any[] = []
+    let entities: any[] = []
+    let knowledgeGraph = { nodes: [] as any[], edges: [] as any[] }
+
+    if (project.vectorDocuments.length > 0) {
+      // Group chunks by source document and take representative samples
+      const docChunks: Record<string, string[]> = {}
+      for (const chunk of project.vectorDocuments) {
+        const meta = typeof chunk.metadata === "string"
+          ? JSON.parse(chunk.metadata)
+          : chunk.metadata as any
+        const source = meta?.source || meta?.title || "Document"
+        if (!docChunks[source]) docChunks[source] = []
+        docChunks[source].push(chunk.content)
+      }
+
+      // Prepare document summaries for analysis (take first few chunks per document)
+      const docsForAnalysis = Object.entries(docChunks).map(([source, chunks]) => ({
+        source,
+        content: chunks.slice(0, 3).join("\n\n"),
+      }))
+
+      // Check for cached insights
+      const projectMeta = project.metadata as any || {}
+      const cachedInsights = projectMeta?._intelligence
+      const cacheAge = cachedInsights?.generatedAt
+        ? Date.now() - new Date(cachedInsights.generatedAt).getTime()
+        : Infinity
+
+      // Use cache if less than 1 hour old and not refreshing
+      if (cachedInsights && cacheAge < 3600000 && !refresh) {
+        insights = cachedInsights.insights || []
+        entities = cachedInsights.entities || []
+        knowledgeGraph = cachedInsights.knowledge_graph || { nodes: [], edges: [] }
+      } else if (docsForAnalysis.length > 0) {
+        // Generate fresh insights using LLM
+        const result = await generateProjectInsights(projectId, docsForAnalysis)
+        insights = result.insights
+        entities = result.entities
+        knowledgeGraph = result.knowledge_graph
+
+        // Cache the results in project metadata
+        try {
+          await prisma.project.update({
+            where: { id: projectId },
+            data: {
+              metadata: {
+                ...(typeof project.metadata === "object" ? project.metadata as object : {}),
+                _intelligence: {
+                  insights,
+                  entities,
+                  knowledge_graph: knowledgeGraph,
+                  generatedAt: new Date().toISOString(),
+                },
+              },
+            },
+          })
+        } catch {
+          // Non-critical - caching failure shouldn't break the response
+        }
+      }
+    }
+
+>>>>>>> d914165 (Initial local Coreflow project)
     return NextResponse.json({
       project_id: projectId,
       project_name: project.name,
@@ -73,12 +161,21 @@ export async function GET(
         documents_by_type: documentsByType,
         chunks_by_source: vectorChunksBySource,
         processing_status: {
+<<<<<<< HEAD
           completed: project.documents.filter((d) => d.status === "completed").length,
           processing: project.documents.filter((d) => d.status === "processing").length,
           failed: project.documents.filter((d) => d.status === "failed").length,
         },
       },
       documents: project.documents.map((doc) => ({
+=======
+          completed: project.documents.filter((d: { status: string }) => d.status === "completed").length,
+          processing: project.documents.filter((d: { status: string }) => d.status === "processing").length,
+          failed: project.documents.filter((d: { status: string }) => d.status === "failed").length,
+        },
+      },
+      documents: project.documents.map((doc: { id: string; filename: string; fileType: string; status: string; metadata: any; createdAt: Date }) => ({
+>>>>>>> d914165 (Initial local Coreflow project)
         id: doc.id,
         filename: doc.filename,
         file_type: doc.fileType,
@@ -86,6 +183,7 @@ export async function GET(
         metadata: doc.metadata,
         created_at: doc.createdAt.toISOString(),
       })),
+<<<<<<< HEAD
       // TODO: Add actual insights from LLM analysis
       insights: [],
       // TODO: Add knowledge graph data
@@ -93,6 +191,11 @@ export async function GET(
         nodes: [],
         edges: [],
       },
+=======
+      insights,
+      entities,
+      knowledge_graph: knowledgeGraph,
+>>>>>>> d914165 (Initial local Coreflow project)
     })
   } catch (error: any) {
     console.error("Get intelligence error:", error)
@@ -102,4 +205,7 @@ export async function GET(
     )
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> d914165 (Initial local Coreflow project)

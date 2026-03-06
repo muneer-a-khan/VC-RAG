@@ -108,6 +108,7 @@ model Integration {
 }
 
 model VectorDocument {
+<<<<<<< HEAD
   id         String   @id
   documentId String?  @map("document_id")
   projectId  String   @map("project_id")
@@ -120,5 +121,24 @@ model VectorDocument {
 
   @@index([documentId])
   @@index([projectId])
+=======
+  id         String                       @id
+  documentId String?                      @map("document_id")
+  projectId  String                       @map("project_id")
+  content    String
+  metadata   Json                         @default("{}")
+  sourceType String                       @map("source_type")
+  chunkIndex Int                          @default(0) @map("chunk_index")
+  parentId   String?                      @map("parent_id")
+  contextHeader String?                   @map("context_header")
+  tokenCount Int                          @default(0) @map("token_count")
+  createdAt  DateTime                     @default(now()) @map("created_at")
+  embedding  Unsupported("vector(1536)")?
+  project    Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([projectId])
+  @@index([parentId])
+>>>>>>> d914165 (Initial local Coreflow project)
   @@map("vector_documents")
 }

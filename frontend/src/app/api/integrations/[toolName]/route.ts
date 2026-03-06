@@ -51,6 +51,75 @@ export async function GET(
   }
 }
 
+<<<<<<< HEAD
+=======
+// Map of API key integrations to their env var names
+const API_KEY_ENV_MAP: Record<string, { env: string; displayName: string }> = {
+  crunchbase: { env: "CRUNCHBASE_API_KEY", displayName: "Crunchbase" },
+  apollo: { env: "APOLLO_API_KEY", displayName: "Apollo.io" },
+}
+
+// POST /api/integrations/[toolName] - Connect API-key integration (reads key from .env)
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: Promise<{ toolName: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ detail: "Unauthorized" }, { status: 401 })
+    }
+
+    const { toolName } = await params
+    const config = API_KEY_ENV_MAP[toolName]
+
+    if (!config) {
+      return NextResponse.json({ detail: "Unknown integration" }, { status: 400 })
+    }
+
+    const apiKey = process.env[config.env]
+    if (!apiKey) {
+      return NextResponse.json(
+        { detail: `${config.env} is not set in your .env file` },
+        { status: 400 }
+      )
+    }
+
+    const integration = await prisma.integration.upsert({
+      where: {
+        userId_name: {
+          userId: session.user.id,
+          name: toolName,
+        },
+      },
+      create: {
+        userId: session.user.id,
+        name: toolName,
+        displayName: config.displayName,
+        status: "connected",
+        credentials: { api_key: apiKey },
+      },
+      update: {
+        status: "connected",
+        credentials: { api_key: apiKey },
+      },
+    })
+
+    return NextResponse.json({
+      status: "connected",
+      integration_id: integration.id,
+    })
+  } catch (error: any) {
+    console.error("Connect integration error:", error)
+    return NextResponse.json(
+      { detail: error.message || "Failed to connect integration" },
+      { status: 500 }
+    )
+  }
+}
+
+>>>>>>> d914165 (Initial local Coreflow project)
 // DELETE /api/integrations/[toolName] - Disconnect integration
 export async function DELETE(
   request: NextRequest,
