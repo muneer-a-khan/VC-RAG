@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-<<<<<<< HEAD
-
-export const dynamic = 'force-dynamic'
-=======
 import { generateProjectInsights } from "@/lib/services/rag-service"
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
->>>>>>> d914165 (Initial local Coreflow project)
 
 // GET /api/projects/[projectId]/intelligence - Get project intelligence/knowledge graph
 export async function GET(
@@ -46,15 +41,10 @@ export async function GET(
         vectorDocuments: {
           select: {
             id: true,
-<<<<<<< HEAD
-            sourceType: true,
-            chunkIndex: true,
-=======
             content: true,
             sourceType: true,
             chunkIndex: true,
             metadata: true,
->>>>>>> d914165 (Initial local Coreflow project)
             createdAt: true,
           },
         },
@@ -65,11 +55,7 @@ export async function GET(
       return NextResponse.json({ detail: "Project not found" }, { status: 404 })
     }
 
-<<<<<<< HEAD
-    // Calculate insights and statistics
-=======
     // Calculate statistics
->>>>>>> d914165 (Initial local Coreflow project)
     const documentsByType: Record<string, number> = {}
     for (const doc of project.documents) {
       const type = doc.fileType || "unknown"
@@ -82,8 +68,6 @@ export async function GET(
       vectorChunksBySource[source] = (vectorChunksBySource[source] || 0) + 1
     }
 
-<<<<<<< HEAD
-=======
     // Check if we should generate insights (only if there are documents)
     const { searchParams } = new URL(request.url)
     const refresh = searchParams.get("refresh") === "true"
@@ -151,7 +135,6 @@ export async function GET(
       }
     }
 
->>>>>>> d914165 (Initial local Coreflow project)
     return NextResponse.json({
       project_id: projectId,
       project_name: project.name,
@@ -161,21 +144,12 @@ export async function GET(
         documents_by_type: documentsByType,
         chunks_by_source: vectorChunksBySource,
         processing_status: {
-<<<<<<< HEAD
-          completed: project.documents.filter((d) => d.status === "completed").length,
-          processing: project.documents.filter((d) => d.status === "processing").length,
-          failed: project.documents.filter((d) => d.status === "failed").length,
-        },
-      },
-      documents: project.documents.map((doc) => ({
-=======
           completed: project.documents.filter((d: { status: string }) => d.status === "completed").length,
           processing: project.documents.filter((d: { status: string }) => d.status === "processing").length,
           failed: project.documents.filter((d: { status: string }) => d.status === "failed").length,
         },
       },
       documents: project.documents.map((doc: { id: string; filename: string; fileType: string; status: string; metadata: any; createdAt: Date }) => ({
->>>>>>> d914165 (Initial local Coreflow project)
         id: doc.id,
         filename: doc.filename,
         file_type: doc.fileType,
@@ -183,19 +157,9 @@ export async function GET(
         metadata: doc.metadata,
         created_at: doc.createdAt.toISOString(),
       })),
-<<<<<<< HEAD
-      // TODO: Add actual insights from LLM analysis
-      insights: [],
-      // TODO: Add knowledge graph data
-      knowledge_graph: {
-        nodes: [],
-        edges: [],
-      },
-=======
       insights,
       entities,
       knowledge_graph: knowledgeGraph,
->>>>>>> d914165 (Initial local Coreflow project)
     })
   } catch (error: any) {
     console.error("Get intelligence error:", error)
@@ -205,7 +169,3 @@ export async function GET(
     )
   }
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> d914165 (Initial local Coreflow project)

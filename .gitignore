@@ -77,3 +77,10 @@ temp/
 .vc_pids
 .env
 .env.*
+
+
+.expo
+node_modules
+*.tsbuildinfo
+.env
+dist

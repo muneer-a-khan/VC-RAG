@@ -5,18 +5,11 @@ import { prisma } from "@/lib/prisma"
 import { triggerSync } from "@/lib/services/integration-service"
 
 export const dynamic = 'force-dynamic'
-<<<<<<< HEAD
-
-// POST /api/integrations/[toolName]/sync - Trigger data sync
-export async function POST(
-  request: NextRequest,
-=======
 export const maxDuration = 120
 
 // POST /api/integrations/[toolName]/sync - Trigger data sync
 export async function POST(
   _request: NextRequest,
->>>>>>> d914165 (Initial local Coreflow project)
   { params }: { params: Promise<{ toolName: string }> }
 ) {
   try {
@@ -59,11 +52,7 @@ export async function POST(
     // Trigger sync (in production, this would be a background job)
     try {
       const credentials = integration.credentials as Record<string, any>
-<<<<<<< HEAD
-      const result = await triggerSync(toolName, credentials)
-=======
       const result = await triggerSync(toolName, credentials, session.user.id)
->>>>>>> d914165 (Initial local Coreflow project)
 
       // Update integration with sync results
       await prisma.integration.update({

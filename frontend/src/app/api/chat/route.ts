@@ -2,17 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-<<<<<<< HEAD
-import { similaritySearch, generateResponse } from "@/lib/services/rag-service"
-
-export const dynamic = 'force-dynamic'
-
-// POST /api/chat - Send a message
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-
-=======
 import {
   executeRAGPipeline,
   executeRAGPipelineStreaming,
@@ -35,21 +24,11 @@ export const dynamic = "force-dynamic"
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
->>>>>>> d914165 (Initial local Coreflow project)
     if (!session?.user?.id) {
       return NextResponse.json({ detail: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
-<<<<<<< HEAD
-    const { message, chat_id, project_id } = body
-
-    if (!message) {
-      return NextResponse.json({ detail: "Message is required" }, { status: 400 })
-    }
-
-    // Create or get chat
-=======
     const {
       message,
       chat_id,
@@ -66,34 +45,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or verify chat
->>>>>>> d914165 (Initial local Coreflow project)
     let chatId = chat_id
     if (!chatId) {
       const chat = await prisma.chat.create({
         data: {
-<<<<<<< HEAD
-          title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
-=======
           title:
             message.substring(0, 50) + (message.length > 50 ? "..." : ""),
->>>>>>> d914165 (Initial local Coreflow project)
           userId: session.user.id,
           projectId: project_id || null,
         },
       })
       chatId = chat.id
     } else {
-<<<<<<< HEAD
-      // Verify chat ownership
-      const existingChat = await prisma.chat.findFirst({
-        where: {
-          id: chatId,
-          userId: session.user.id,
-        },
-=======
       const existingChat = await prisma.chat.findFirst({
         where: { id: chatId, userId: session.user.id },
->>>>>>> d914165 (Initial local Coreflow project)
       })
       if (!existingChat) {
         return NextResponse.json({ detail: "Chat not found" }, { status: 404 })
@@ -102,22 +67,6 @@ export async function POST(request: NextRequest) {
 
     // Save user message
     await prisma.message.create({
-<<<<<<< HEAD
-      data: {
-        chatId,
-        role: "user",
-        content: message,
-      },
-    })
-
-    // Get chat history for context
-    const chatHistory = await prisma.message.findMany({
-      where: { chatId },
-      orderBy: { createdAt: "asc" },
-      take: 10,
-    })
-
-=======
       data: { chatId, role: "user", content: message },
     })
 
@@ -263,58 +212,10 @@ export async function POST(request: NextRequest) {
     // ============================================================
     // NON-STREAMING RESPONSE (fallback or explicit)
     // ============================================================
->>>>>>> d914165 (Initial local Coreflow project)
     let assistantResponse: string
     let sources: any[] = []
 
     try {
-<<<<<<< HEAD
-      // Find user's upload project for searching
-      const uploadProject = await prisma.project.findFirst({
-        where: {
-          userId: session.user.id,
-          name: "Chat Uploads",
-        },
-      })
-
-      // Search in uploaded documents
-      let context: any[] = []
-      
-      // Search in specific project if provided, otherwise search in uploads
-      const searchProjectId = project_id || uploadProject?.id
-      
-      if (searchProjectId) {
-        context = await similaritySearch(message, searchProjectId)
-      } else {
-        // Search across all user's projects
-        const userProjects = await prisma.project.findMany({
-          where: { userId: session.user.id },
-          select: { id: true },
-        })
-        
-        // Search in each project and combine results
-        for (const project of userProjects) {
-          const projectResults = await similaritySearch(message, project.id, 3)
-          context.push(...projectResults)
-        }
-        
-        // Sort combined results by similarity
-        context.sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
-        context = context.slice(0, 5)
-      }
-
-      // Format chat history for the RAG service
-      const formattedHistory = chatHistory.slice(-8).map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }))
-
-      // Generate response using DeepSeek via RAG service
-      assistantResponse = await generateResponse(message, context, formattedHistory)
-      
-      // Format sources for response
-      sources = context.map((doc, i) => ({
-=======
       const result = await executeRAGPipeline(
         message,
         formattedHistory,
@@ -323,26 +224,16 @@ export async function POST(request: NextRequest) {
 
       assistantResponse = result.response
       sources = result.sources.map((doc, i) => ({
->>>>>>> d914165 (Initial local Coreflow project)
         id: i + 1,
         source: doc.metadata?.source || doc.metadata?.title || "Document",
         content: doc.content?.substring(0, 200) + "...",
         similarity: doc.similarity,
-<<<<<<< HEAD
-      }))
-    } catch (ragError) {
-      console.error("RAG error:", ragError)
-      assistantResponse = `I apologize, but I encountered an error processing your request. Please try again.
-
-If you've uploaded files, make sure they contain readable text content.`
-=======
         rerankScore: doc.rerankScore,
       }))
     } catch (ragError) {
       console.error("RAG pipeline error:", ragError)
       assistantResponse =
         "I apologize, but I encountered an error processing your request. Please try again.\n\nIf you've uploaded files, make sure they contain readable text content."
->>>>>>> d914165 (Initial local Coreflow project)
     }
 
     // Save assistant message
@@ -351,11 +242,7 @@ If you've uploaded files, make sure they contain readable text content.`
         chatId,
         role: "assistant",
         content: assistantResponse,
-<<<<<<< HEAD
-        sources: sources,
-=======
         sources,
->>>>>>> d914165 (Initial local Coreflow project)
       },
     })
 
@@ -378,10 +265,6 @@ If you've uploaded files, make sure they contain readable text content.`
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-<<<<<<< HEAD
-
-=======
->>>>>>> d914165 (Initial local Coreflow project)
     if (!session?.user?.id) {
       return NextResponse.json({ detail: "Unauthorized" }, { status: 401 })
     }
@@ -400,17 +283,8 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: "desc" },
       take: limit,
       include: {
-<<<<<<< HEAD
-        _count: {
-          select: { messages: true },
-        },
-        project: {
-          select: { id: true, name: true },
-        },
-=======
         _count: { select: { messages: true } },
         project: { select: { id: true, name: true } },
->>>>>>> d914165 (Initial local Coreflow project)
       },
     })
 

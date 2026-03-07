@@ -18,21 +18,12 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("query")
     const projectId = searchParams.get("project_id")
 
-<<<<<<< HEAD
-    if (!query) {
-      return NextResponse.json({ detail: "Query is required" }, { status: 400 })
-    }
-
-=======
->>>>>>> d914165 (Initial local Coreflow project)
     // Build where clause for chats
     const chatWhere: any = { userId: session.user.id }
     if (projectId) {
       chatWhere.projectId = projectId
     }
 
-<<<<<<< HEAD
-=======
     // If no query, return recent chats directly
     if (!query) {
       const chats = await prisma.chat.findMany({
@@ -61,7 +52,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
->>>>>>> d914165 (Initial local Coreflow project)
     // Search in messages
     const messages = await prisma.message.findMany({
       where: {

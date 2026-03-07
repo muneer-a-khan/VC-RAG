@@ -51,8 +51,6 @@ export async function GET(
   }
 }
 
-<<<<<<< HEAD
-=======
 // Map of API key integrations to their env var names
 const API_KEY_ENV_MAP: Record<string, { env: string; displayName: string }> = {
   crunchbase: { env: "CRUNCHBASE_API_KEY", displayName: "Crunchbase" },
@@ -119,7 +117,6 @@ export async function POST(
   }
 }
 
->>>>>>> d914165 (Initial local Coreflow project)
 // DELETE /api/integrations/[toolName] - Disconnect integration
 export async function DELETE(
   request: NextRequest,

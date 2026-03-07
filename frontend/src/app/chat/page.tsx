@@ -125,11 +125,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-<<<<<<< HEAD
-      content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from PitchBook, AngelList, and Crunchbase. What would you like to know?",
-=======
       content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from your integrations. What would you like to know?",
->>>>>>> d914165 (Initial local Coreflow project)
       timestamp: new Date().toISOString()
     }
   ])
@@ -146,10 +142,7 @@ export default function ChatPage() {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDrivePicking, setIsDrivePicking] = useState(false)
-<<<<<<< HEAD
-=======
   const [isDeepMode, setIsDeepMode] = useState(false)
->>>>>>> d914165 (Initial local Coreflow project)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -284,11 +277,7 @@ export default function ChatPage() {
     setMessages([
       {
         role: "assistant",
-<<<<<<< HEAD
-        content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from PitchBook, AngelList, and Crunchbase. What would you like to know?",
-=======
         content: "Hello! I'm your VC Copilot. I can help you analyze startups using data from your integrations. What would you like to know?",
->>>>>>> d914165 (Initial local Coreflow project)
         timestamp: new Date().toISOString()
       }
     ])
@@ -460,37 +449,6 @@ async function openDrivePicker() {
     }
 
     setMessages(prev => [...prev, userMessage])
-<<<<<<< HEAD
-    setInput("")
-    setIsLoading(true)
-
-    try {
-      const response = await apiClient.chat.sendMessage({ 
-        message: input,
-        chat_id: currentChatId || undefined,
-      })
-      
-      if (!currentChatId && response.chat_id) {
-        setCurrentChatId(response.chat_id)
-        loadRecentChats()
-      }
-
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response.response || "I'll help you with that. Once you connect your API keys and upload documents, I'll be able to provide detailed insights from PitchBook, AngelList, and Crunchbase data.",
-        timestamp: new Date().toISOString(),
-        sources: response.sources,
-      }
-      setMessages(prev => [...prev, assistantMessage])
-    } catch (error) {
-      console.error("Chat error:", error)
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: "I'll help you with that. Once you connect your API keys and upload documents, I'll be able to provide detailed insights from PitchBook, AngelList, and Crunchbase data.",
-        timestamp: new Date().toISOString()
-      }
-      setMessages(prev => [...prev, assistantMessage])
-=======
     const userInput = input
     setInput("")
     setIsLoading(true)
@@ -631,17 +589,12 @@ async function openDrivePicker() {
         }
         return updated
       })
->>>>>>> d914165 (Initial local Coreflow project)
     } finally {
       setIsLoading(false)
     }
   }
 
-<<<<<<< HEAD
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-=======
   const handleKeyDown = (e: React.KeyboardEvent) => {
->>>>>>> d914165 (Initial local Coreflow project)
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -974,12 +927,6 @@ async function openDrivePicker() {
                   <span className="material-symbols-outlined text-[18px]">format_bold</span>
                 </button>
                 <div className="w-px h-4 bg-gray-700/50 mx-1"></div>
-<<<<<<< HEAD
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition-colors">
-                  <span className="material-symbols-outlined text-[14px] text-blue-400">psychology</span>
-                  <span className="text-[10px] font-medium text-blue-400 uppercase">Deep Analysis Mode</span>
-                </div>
-=======
                 <button
                   onClick={() => setIsDeepMode(!isDeepMode)}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded border cursor-pointer transition-colors ${
@@ -993,7 +940,6 @@ async function openDrivePicker() {
                     {isDeepMode ? "Deep Mode ON" : "Deep Analysis Mode"}
                   </span>
                 </button>
->>>>>>> d914165 (Initial local Coreflow project)
               </div>
 
               {/* Text Area */}
@@ -1001,11 +947,7 @@ async function openDrivePicker() {
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-<<<<<<< HEAD
-                  onKeyPress={handleKeyPress}
-=======
                   onKeyDown={handleKeyDown}
->>>>>>> d914165 (Initial local Coreflow project)
                   className="w-full bg-transparent border-0 text-white placeholder-gray-500 focus:ring-0 resize-none py-3 px-4 min-h-[52px] max-h-[200px] text-sm leading-relaxed"
                   placeholder="Ask about the deal, financials, or market risks..."
                   rows={1}

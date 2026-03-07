@@ -18,14 +18,6 @@ interface Integration {
 }
 
 const integrationLogos: Record<string, string> = {
-<<<<<<< HEAD
-  salesforce: "https://lh3.googleusercontent.com/aida-public/AB6AXuCbf_XiHrb6RogQxqWhSsoIYmLmH6as_PE6gE_bCqK0t_i8JkdPiw_RgFs__EnCa2-FfEcUqZvENxQG2-kpHw8jsvmPo_oZNcNNjEbh8ovYZftOQhv08PUW-q_2XFCDZr1JpaXluA5PEC7cEaYd43en836R-nk0u9S9iRhrVHrD_eLPwyMD8lvhPkXEuAG73DwPrqaqqRSyZIXWBa21tq-9A7qsvFuNUlz-OcEiAiDMcQMWvn16eWJQZAfkQ90aJSUzEThdzUvjq9vZ",
-  pitchbook: "https://lh3.googleusercontent.com/aida-public/AB6AXuBuQRxu2F_7MdvQL4ZEubhdzlnwO5-kPuXFxMgd4nCQesCHugLH0swVZymg7Mii-tzt9ThDXEvf_IzUyRPvY3McUaQQY6fOG8sG8ksgcAYSNmdzWR7t1TQ5kCE93fcQuZ5apOSmwhnU1VxKRy5s0EYyptRgcCYjqAjLKsNzB-U_NoZQQOZ5ZB1hXDESLm-0fWzFKBan4MJHhsqwW7P_D3pYsqDQ7osWZXMRm_ThrsPlB5aWw0zTumbG65IXMnEaGwe-qDiYFHGONilt",
-  crunchbase: "https://lh3.googleusercontent.com/aida-public/AB6AXuAKHz59tJCo-sSwTSHfizHvyTUYk_o30Rr5s2kVzdZZB-Sh3CdcRGAlZ4fMiEat6OvV2wm82iMixbo_n481G8NV6KUGJFw4axTOc0jnGPgMeEg2BmZs-BWJYGWHmFMY6qvPldfQtKU5yUMDLt_2B-UxNo1oMdUBeM_diszr4-rgvFoCYYK0wnDr2XfuZXNGJrdAlWqIkHUOSkORpfdQxIl2PQZr4RNTAd3zckWBSLp35kqYnNwdLUn3ex425ijP1oZslMAeVrxSH-4K",
-  gmail: "https://lh3.googleusercontent.com/aida-public/AB6AXuAsV8DapYVNxaPCZQFUIXKy7wmqmUPx_xYPTDPF5lA9BFxL08kAlkUKlPwT6Ooz8apznB-aktF9VZSfJ8SquRYpaN9qzmyhCTQZ8Go3Sk_n4MIMe9XC7QEIIYY-pl8ph9c7gwKkVOlG5W0xMjyjA_LjOJQYOAX5CtmhzuKLDUqzum98mRegeVdq94ug-Nskh3oJjCsOlBStqlf0rYCCW_PG0npCNrMPretmVNIxssLRoHPaw5fhmn8kwUJv-jrYlCIXw1rbtsAmqDh1",
-  linkedin: "https://lh3.googleusercontent.com/aida-public/AB6AXuAfQCo-AsVHeP4g4Kgh_jIUz2Q3jSO21BfpaUX7ckg_3tS_pjCjdBf_OOdMgma068CS9d9Rsx9ylCy6UqcKfh6SR3ptE3NEAEmVjFneGOsqAyiRWjYUYexoENeFZCRgSu7zULpXrKDB3CSK5QPf-EFZ6DMD4xgyqata_ISgQbj45O1YEnxYkbn2o_3tIXGyK-6XnkGqIzJGFwC4NlZ6HpuwPfZi88G_H3hqLR8u6wYazRfR5zXTY2oqkOGVRCTS9CZfDxRohWeaHP84",
-  quickbooks: "https://lh3.googleusercontent.com/aida-public/AB6AXuBtF4qW61gv7GvTdo_r8FZSD8FCiTSMa2BRnx65eGd9CnUQqbh-NiK8TXU5DHptzDcBkc4c0_jn6Wp9UESKhHQmUkWfR50XQqZjetPL550XrrRJBz-QoWiusSMKCySpUFWfAbmJ6iYK_DqbbG1ZeUkyi957RBLom0Si-KjDWxj99MlwwBb_-zrqGtAfWloWyGE99VGI5kR6PtozGe2eN3JElx7xSnitDn__0IF8MKB5KkkYTxicIX3JNhniKHfddJcxt8kTYfGfTB-H",
-=======
   google_workspace: "https://www.google.com/s2/favicons?domain=workspace.google.com&sz=128",
   salesforce: "https://www.google.com/s2/favicons?domain=salesforce.com&sz=128",
   pitchbook: "https://www.google.com/s2/favicons?domain=pitchbook.com&sz=128",
@@ -66,7 +58,6 @@ const integrationIcons: Record<string, string> = {
   apollo: "contacts",
   angellist: "rocket_launch",
   pitchbook: "analytics",
->>>>>>> d914165 (Initial local Coreflow project)
 }
 
 function IntegrationsContent() {
@@ -76,11 +67,7 @@ function IntegrationsContent() {
   const [syncing, setSyncing] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-<<<<<<< HEAD
-  const [activeTab, setActiveTab] = useState("all")
-=======
   const [searchQuery, setSearchQuery] = useState("")
->>>>>>> d914165 (Initial local Coreflow project)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -116,9 +103,6 @@ function IntegrationsContent() {
     try {
       setConnecting(toolName)
       setError(null)
-<<<<<<< HEAD
-      
-=======
 
       // API key integrations connect directly via env vars
       if (apiKeyIntegrations.has(toolName)) {
@@ -140,7 +124,6 @@ function IntegrationsContent() {
       }
 
       // OAuth integrations redirect to provider
->>>>>>> d914165 (Initial local Coreflow project)
       const { auth_url } = await apiClient.integrations.getAuthUrl(toolName)
       window.location.href = auth_url
     } catch (err: any) {
@@ -189,22 +172,12 @@ function IntegrationsContent() {
     return `Last synced: ${date.toLocaleDateString()}`
   }
 
-<<<<<<< HEAD
-  const tabs = [
-    { id: "all", label: "All Sources" },
-    { id: "crm", label: "CRM" },
-    { id: "market", label: "Market Data" },
-    { id: "communication", label: "Communication" },
-    { id: "financials", label: "Financials" },
-  ]
-=======
   const filteredIntegrations = integrations.filter((i) =>
     searchQuery
       ? i.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         i.description.toLowerCase().includes(searchQuery.toLowerCase())
       : true
   )
->>>>>>> d914165 (Initial local Coreflow project)
 
   return (
     <div className="relative flex h-auto min-h-screen w-full flex-col bg-background-dark overflow-x-hidden font-display">
@@ -274,48 +247,19 @@ function IntegrationsContent() {
               </div>
             )}
 
-<<<<<<< HEAD
-            {/* Search and Filter Bar */}
-            <div className="flex flex-col md:flex-row gap-4 mb-8 justify-between items-start md:items-end">
-              {/* Tabs */}
-              <div className="w-full md:w-auto overflow-x-auto">
-                <div className="flex border-b border-[#324867] gap-6 min-w-max">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex flex-col items-center justify-center border-b-[3px] pb-3 pt-2 transition-colors ${
-                        activeTab === tab.id
-                          ? "border-b-primary text-white"
-                          : "border-b-transparent text-text-secondary hover:text-white"
-                      }`}
-                    >
-                      <span className="text-sm font-bold leading-normal tracking-[0.015em]">{tab.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Search */}
-=======
             {/* Search Bar */}
             <div className="flex mb-8">
->>>>>>> d914165 (Initial local Coreflow project)
               <label className="flex flex-col w-full md:w-80 h-10">
                 <div className="flex w-full flex-1 items-stretch rounded-lg h-full bg-[#1e293b] border border-[#334155] focus-within:border-primary transition-colors">
                   <div className="text-text-secondary flex items-center justify-center pl-3">
                     <span className="material-symbols-outlined text-[20px]">search</span>
                   </div>
-<<<<<<< HEAD
-                  <input className="flex w-full min-w-0 flex-1 bg-transparent text-white focus:outline-none placeholder:text-[#64748b] px-3 text-sm font-normal" placeholder="Search integrations..." />
-=======
                   <input
                     className="flex w-full min-w-0 flex-1 bg-transparent text-white focus:outline-none placeholder:text-[#64748b] px-3 text-sm font-normal"
                     placeholder="Search integrations..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
->>>>>>> d914165 (Initial local Coreflow project)
                 </div>
               </label>
             </div>
@@ -329,22 +273,11 @@ function IntegrationsContent() {
             ) : (
               /* Grid Layout for Cards */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-<<<<<<< HEAD
-                {integrations.map((integration) => {
-=======
                 {filteredIntegrations.map((integration) => {
->>>>>>> d914165 (Initial local Coreflow project)
                   const logo = integrationLogos[integration.name] || null
                   return (
                     <div key={integration.name} className="flex flex-col bg-[#1e293b] border border-[#334155] rounded-xl p-5 hover:border-[#475569] transition-all group">
                       <div className="flex justify-between items-start mb-4">
-<<<<<<< HEAD
-                        <div className="bg-white p-2 rounded-lg size-12 flex items-center justify-center">
-                          {logo ? (
-                            <img alt={`${integration.display_name} logo`} className="w-8 h-8 object-contain" src={logo} />
-                          ) : (
-                            <span className="text-2xl">{integration.icon}</span>
-=======
                         <div className="bg-[#0f1a2e] p-2 rounded-lg size-12 flex items-center justify-center border border-[#334155]">
                           {logo ? (
                             <img alt={`${integration.display_name} logo`} className="w-8 h-8 object-contain rounded" src={logo} />
@@ -352,7 +285,6 @@ function IntegrationsContent() {
                             <span className="material-symbols-outlined text-2xl text-primary">
                               {integrationIcons[integration.name] || "extension"}
                             </span>
->>>>>>> d914165 (Initial local Coreflow project)
                           )}
                         </div>
                         {integration.connected ? (
@@ -373,25 +305,15 @@ function IntegrationsContent() {
                       </div>
                       <div className="mt-auto border-t border-[#334155] pt-4">
                         <div className="flex justify-between items-center mb-3 text-xs text-[#64748b]">
-<<<<<<< HEAD
-                          <span>{integration.connected ? formatLastSync(integration.last_sync) : "Requires API Key"}</span>
-=======
                           <span>{integration.connected ? formatLastSync(integration.last_sync) : csvImportIntegrations.has(integration.name) ? "CSV / File Upload" : oauthIntegrations.has(integration.name) ? "Connect via OAuth" : apiKeyIntegrations.has(integration.name) ? "Requires API Key" : "Not configured"}</span>
->>>>>>> d914165 (Initial local Coreflow project)
                         </div>
                         {integration.connected ? (
                           <div className="flex gap-3">
                             <button
                               onClick={() => handleDisconnect(integration.name)}
-<<<<<<< HEAD
-                              className="flex-1 bg-transparent border border-[#334155] text-white hover:bg-[#334155] text-sm font-medium py-2 px-3 rounded-lg transition-colors"
-                            >
-                              Manage
-=======
                               className="flex-1 bg-transparent border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm font-medium py-2 px-3 rounded-lg transition-colors"
                             >
                               Disconnect
->>>>>>> d914165 (Initial local Coreflow project)
                             </button>
                             <button
                               onClick={() => handleSync(integration.name)}
@@ -402,8 +324,6 @@ function IntegrationsContent() {
                               {syncing === integration.name ? "Syncing" : "Sync"}
                             </button>
                           </div>
-<<<<<<< HEAD
-=======
                         ) : csvImportIntegrations.has(integration.name) ? (
                           <Link
                             href="/chat"
@@ -412,7 +332,6 @@ function IntegrationsContent() {
                             <span className="material-symbols-outlined text-[16px]">upload_file</span>
                             Upload CSV
                           </Link>
->>>>>>> d914165 (Initial local Coreflow project)
                         ) : (
                           <button
                             onClick={() => handleConnect(integration.name)}
@@ -451,10 +370,7 @@ function IntegrationsContent() {
           </div>
         </div>
       </div>
-<<<<<<< HEAD
-=======
 
->>>>>>> d914165 (Initial local Coreflow project)
     </div>
   )
 }

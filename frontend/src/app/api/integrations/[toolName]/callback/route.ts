@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-<<<<<<< HEAD
-import { exchangeOAuthCode, AVAILABLE_INTEGRATIONS } from "@/lib/services/integration-service"
-=======
 import { exchangeOAuthCode, AVAILABLE_INTEGRATIONS, verifySignedState } from "@/lib/services/integration-service"
->>>>>>> d914165 (Initial local Coreflow project)
 
 export const dynamic = 'force-dynamic'
 
@@ -122,17 +118,9 @@ export async function GET(
       )
     }
 
-<<<<<<< HEAD
-    // Decode state to get user info
-    let stateData
-    try {
-      stateData = JSON.parse(Buffer.from(state, "base64").toString())
-    } catch {
-=======
     // Verify and decode signed state to get user info
     const stateData = verifySignedState(state)
     if (!stateData) {
->>>>>>> d914165 (Initial local Coreflow project)
       return NextResponse.redirect(
         new URL("/integrations?error=invalid_state", request.url)
       )

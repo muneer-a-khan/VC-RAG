@@ -13,11 +13,6 @@ function LoginForm() {
 
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-<<<<<<< HEAD
-  const [formError, setFormError] = useState<string | null>(
-    error === "CredentialsSignin" ? "Incorrect email or password. Please try again." : null
-  )
-=======
   const [formError, setFormError] = useState<string | null>(() => {
     if (!error) return null
     switch (error) {
@@ -32,7 +27,6 @@ function LoginForm() {
         return "Something went wrong during sign-in. Please try again."
     }
   })
->>>>>>> d914165 (Initial local Coreflow project)
 
   const [formData, setFormData] = useState({
     email: "",

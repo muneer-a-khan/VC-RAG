@@ -132,25 +132,6 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-<<<<<<< HEAD
-          // Find or create user using upsert to avoid race conditions
-          const dbUser = await prisma.user.upsert({
-            where: { email: token.email },
-            update: {
-              // Update name if changed
-              fullName: token.name || undefined,
-            },
-            create: {
-              email: token.email,
-              hashedPassword: await bcrypt.hash(
-                Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16),
-                12
-              ),
-              fullName: token.name || "User",
-            },
-          })
-
-=======
           const email = token.email as string
           const fullName = (token.name as string) || "User"
 
@@ -181,19 +162,13 @@ export const authOptions: NextAuthOptions = {
             })
           }
 
->>>>>>> d914165 (Initial local Coreflow project)
           token.id = dbUser.id
           token.organization = dbUser.organization || undefined
         } catch (error) {
           console.error("OAuth user sync failed:", error)
-<<<<<<< HEAD
-          // Don't silently fail - throw to prevent invalid session
-          throw new Error("Failed to create user account. Please try again.")
-=======
           // Set error on token instead of throwing — throwing kills the
           // entire sign-in flow and silently bounces the user back to login.
           ;(token as any).error = "DatabaseSyncError"
->>>>>>> d914165 (Initial local Coreflow project)
         }
       }
 
@@ -225,12 +200,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async redirect({ url, baseUrl }) {
-<<<<<<< HEAD
-      // After sign in, redirect to the intended page or chat
-      const callbackUrl = url.includes('callbackUrl=') ? new URL(url).searchParams.get('callbackUrl') : null
-      if (callbackUrl) {
-        return callbackUrl
-=======
       // Allow same-origin redirects (including error pages like /login?error=...)
       if (url.startsWith(baseUrl)) {
         return url
@@ -238,7 +207,6 @@ export const authOptions: NextAuthOptions = {
       // Allow relative URLs
       if (url.startsWith("/")) {
         return `${baseUrl}${url}`
->>>>>>> d914165 (Initial local Coreflow project)
       }
       // Default to chat page after login
       return `${baseUrl}/chat`

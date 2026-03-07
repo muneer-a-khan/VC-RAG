@@ -4,86 +4,11 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { supabase, STORAGE_BUCKET } from "@/lib/supabase"
 import { indexDocument } from "@/lib/services/rag-service"
-<<<<<<< HEAD
-=======
 import { extractTextContent } from "@/lib/services/text-extraction"
->>>>>>> d914165 (Initial local Coreflow project)
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-<<<<<<< HEAD
-const SUPPORTED_TEXT_TYPES = [
-  'text/plain',
-  'text/markdown', 
-  'text/csv',
-  'application/json',
-  'text/html',
-  'text/xml',
-  'application/xml',
-]
-
-const SUPPORTED_DOC_EXTENSIONS = ['.txt', '.md', '.csv', '.json', '.html', '.xml']
-
-function getFileExtension(filename: string): string {
-  return filename.substring(filename.lastIndexOf('.')).toLowerCase()
-}
-
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  try {
-    // Use unpdf which is designed for serverless environments
-    const { extractText, getDocumentProxy } = await import('unpdf')
-    
-    // Convert buffer to ArrayBuffer
-    const arrayBuffer = buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength
-    )
-    
-    // Get the PDF document
-    const pdf = await getDocumentProxy(new Uint8Array(arrayBuffer))
-    
-    // Extract text from all pages
-    const { text } = await extractText(pdf, { mergePages: true })
-    
-    if (text && text.trim().length > 50) {
-      return text.trim()
-    }
-    
-    return ''
-  } catch (error) {
-    console.error("PDF extraction error:", error)
-    return ''
-  }
-}
-
-async function extractTextContent(file: File, buffer: Buffer): Promise<string> {
-  const extension = getFileExtension(file.name)
-  
-  // Handle PDF files
-  if (file.type === 'application/pdf' || extension === '.pdf') {
-    console.log(`Extracting text from PDF: ${file.name}`)
-    const text = await extractTextFromPDF(buffer)
-    console.log(`Extracted ${text.length} characters from PDF`)
-    if (text.length > 50) {
-      return text
-    }
-    console.warn(`PDF extraction returned insufficient text (${text.length} chars)`)
-    return ''
-  }
-  
-  // Handle text-based files
-  if (SUPPORTED_TEXT_TYPES.includes(file.type) || SUPPORTED_DOC_EXTENSIONS.includes(extension)) {
-    return buffer.toString('utf-8')
-  }
-  
-  // Default: try to read as text
-  const text = buffer.toString('utf-8')
-  return text.replace(/[^\x20-\x7E\n\r\t]/g, '').trim()
-}
-
-=======
->>>>>>> d914165 (Initial local Coreflow project)
 // POST /api/chat/upload
 export async function POST(request: NextRequest) {
   try {
@@ -94,11 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData()
-<<<<<<< HEAD
-    const files = formData.getAll("files") as File[]
-=======
     const files = formData.getAll("files") as unknown as File[]
->>>>>>> d914165 (Initial local Coreflow project)
 
     if (!files || files.length === 0) {
       return NextResponse.json({ detail: "No files provided" }, { status: 400 })
@@ -158,11 +79,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Extract text content
-<<<<<<< HEAD
-        const textContent = await extractTextContent(file, buffer)
-=======
         const textContent = await extractTextContent(file.name, file.type, buffer)
->>>>>>> d914165 (Initial local Coreflow project)
         
         if (textContent && textContent.trim().length > 50) {
           // Index for RAG
@@ -247,11 +164,7 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-<<<<<<< HEAD
-      files: documents.map(doc => ({
-=======
       files: documents.map((doc: any) => ({
->>>>>>> d914165 (Initial local Coreflow project)
         id: doc.id,
         filename: doc.filename,
         file_type: doc.fileType,
