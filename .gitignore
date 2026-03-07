@@ -75,3 +75,5 @@ temp/
 
 # Process tracking
 .vc_pids
+.env
+.env.*
