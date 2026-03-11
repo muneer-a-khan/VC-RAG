@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       project_id,
       stream: shouldStream = true,
       mode = "fast",
+      history_enabled: historyEnabled = true,
     } = body
 
     if (!message) {
@@ -44,47 +45,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create or verify chat
+    // In secure mode (history off): skip all DB persistence and chat history
     let chatId = chat_id
-    if (!chatId) {
-      const chat = await prisma.chat.create({
-        data: {
-          title:
-            message.substring(0, 50) + (message.length > 50 ? "..." : ""),
-          userId: session.user.id,
-          projectId: project_id || null,
-        },
-      })
-      chatId = chat.id
-    } else {
-      const existingChat = await prisma.chat.findFirst({
-        where: { id: chatId, userId: session.user.id },
-      })
-      if (!existingChat) {
-        return NextResponse.json({ detail: "Chat not found" }, { status: 404 })
+    let formattedHistory: { role: "user" | "assistant"; content: string }[] = []
+
+    if (historyEnabled) {
+      // Create or verify chat
+      if (!chatId) {
+        const chat = await prisma.chat.create({
+          data: {
+            title:
+              message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+            userId: session.user.id,
+            projectId: project_id || null,
+          },
+        })
+        chatId = chat.id
+      } else {
+        const existingChat = await prisma.chat.findFirst({
+          where: { id: chatId, userId: session.user.id },
+        })
+        if (!existingChat) {
+          return NextResponse.json({ detail: "Chat not found" }, { status: 404 })
+        }
       }
+
+      // Save user message
+      await prisma.message.create({
+        data: { chatId, role: "user", content: message },
+      })
+
+      // Get chat history
+      const chatHistory = await prisma.message.findMany({
+        where: { chatId },
+        orderBy: { createdAt: "asc" },
+        take: 12,
+      })
+
+      formattedHistory = chatHistory.slice(-10).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }))
     }
-
-    // Save user message
-    await prisma.message.create({
-      data: { chatId, role: "user", content: message },
-    })
-
-    // Get chat history
-    const chatHistory = await prisma.message.findMany({
-      where: { chatId },
-      orderBy: { createdAt: "asc" },
-      take: 12,
-    })
-
-    const formattedHistory = chatHistory.slice(-10).map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }))
 
     // Determine search scope
     let searchProjectId = project_id
-    if (!searchProjectId) {
+    if (!searchProjectId && chatId) {
       const chat = await prisma.chat.findFirst({
         where: { id: chatId },
         select: { projectId: true },
@@ -180,18 +186,22 @@ export async function POST(request: NextRequest) {
               }
             }
 
-            // Save the complete assistant response to DB
-            const assistantMessage = await prisma.message.create({
-              data: {
-                chatId,
-                role: "assistant",
-                content: fullResponse,
-                sources: formattedSources,
-              },
-            })
+            // Save the complete assistant response to DB (skip in secure mode)
+            let messageId = null
+            if (historyEnabled && chatId) {
+              const assistantMessage = await prisma.message.create({
+                data: {
+                  chatId,
+                  role: "assistant",
+                  content: fullResponse,
+                  sources: formattedSources,
+                },
+              })
+              messageId = assistantMessage.id
+            }
 
             // Send completion event
-            sendEvent({ type: "done", message_id: assistantMessage.id })
+            sendEvent({ type: "done", message_id: messageId })
             controller.close()
           },
         })
@@ -236,20 +246,24 @@ export async function POST(request: NextRequest) {
         "I apologize, but I encountered an error processing your request. Please try again.\n\nIf you've uploaded files, make sure they contain readable text content."
     }
 
-    // Save assistant message
-    const assistantMessage = await prisma.message.create({
-      data: {
-        chatId,
-        role: "assistant",
-        content: assistantResponse,
-        sources,
-      },
-    })
+    // Save assistant message (skip in secure mode)
+    let messageId = null
+    if (historyEnabled && chatId) {
+      const assistantMessage = await prisma.message.create({
+        data: {
+          chatId,
+          role: "assistant",
+          content: assistantResponse,
+          sources,
+        },
+      })
+      messageId = assistantMessage.id
+    }
 
     return NextResponse.json({
-      chat_id: chatId,
+      chat_id: chatId || null,
       response: assistantResponse,
-      message_id: assistantMessage.id,
+      message_id: messageId,
       sources,
     })
   } catch (error: any) {

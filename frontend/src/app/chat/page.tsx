@@ -143,6 +143,7 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDrivePicking, setIsDrivePicking] = useState(false)
   const [isDeepMode, setIsDeepMode] = useState(false)
+  const [isHistoryEnabled, setIsHistoryEnabled] = useState(true)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -467,9 +468,10 @@ async function openDrivePicker() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userInput,
-          chat_id: currentChatId || undefined,
+          chat_id: isHistoryEnabled ? (currentChatId || undefined) : undefined,
           stream: true,
           mode: isDeepMode ? "deep" : "fast",
+          history_enabled: isHistoryEnabled,
         }),
       })
 
@@ -502,7 +504,7 @@ async function openDrivePicker() {
               const event = JSON.parse(jsonStr)
 
               if (event.type === "metadata") {
-                if (!currentChatId && event.chat_id) {
+                if (isHistoryEnabled && !currentChatId && event.chat_id) {
                   setCurrentChatId(event.chat_id)
                   loadRecentChats()
                 }
@@ -557,7 +559,7 @@ async function openDrivePicker() {
         // Handle non-streaming JSON response (fallback)
         const data = await response.json()
 
-        if (!currentChatId && data.chat_id) {
+        if (isHistoryEnabled && !currentChatId && data.chat_id) {
           setCurrentChatId(data.chat_id)
           loadRecentChats()
         }
@@ -805,6 +807,35 @@ async function openDrivePicker() {
                   </p>
                 </div>
               </label>
+
+              {/* History Toggle */}
+              <div className="flex items-center justify-between mt-3 px-1">
+                <div className="flex items-center gap-2">
+                  <span className={`material-symbols-outlined text-[16px] ${isHistoryEnabled ? "text-gray-400" : "text-gray-500"}`}>
+                    {isHistoryEnabled ? "history" : "shield"}
+                  </span>
+                  <span className={`text-xs font-medium ${isHistoryEnabled ? "text-gray-400" : "text-gray-500"}`}>
+                    {isHistoryEnabled ? "History On" : "Secure Mode"}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsHistoryEnabled(!isHistoryEnabled)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    isHistoryEnabled ? "bg-primary" : "bg-gray-600"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      isHistoryEnabled ? "translate-x-[18px]" : "translate-x-[3px]"
+                    }`}
+                  />
+                </button>
+              </div>
+              {!isHistoryEnabled && (
+                <p className="text-[10px] text-gray-500 mt-1 px-1">
+                  Messages won't be saved or used as context
+                </p>
+              )}
             </div>
           </div>
         </aside>
