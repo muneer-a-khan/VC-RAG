@@ -1,97 +1,64 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withAuth, badRequest } from "@/lib/api-utils"
 import { prisma } from "@/lib/prisma"
 import { exchangeOAuthCode, AVAILABLE_INTEGRATIONS, verifySignedState } from "@/lib/services/integration-service"
 
 export const dynamic = 'force-dynamic'
 
 // POST /api/integrations/[toolName]/callback - Complete OAuth connection
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ toolName: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
+export const POST = withAuth(async ({ session, params, request }) => {
+  const { toolName } = params
+  const body = await request.json()
+  const { code, state } = body
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ detail: "Unauthorized" }, { status: 401 })
-    }
-
-    const { toolName } = await params
-    const body = await request.json()
-    const { code, state } = body
-
-    if (!code || !state) {
-      return NextResponse.json(
-        { detail: "Code and state are required" },
-        { status: 400 }
-      )
-    }
-
-    // Verify integration exists
-    const integrationConfig = AVAILABLE_INTEGRATIONS.find((i) => i.name === toolName)
-    if (!integrationConfig) {
-      return NextResponse.json(
-        { detail: "Unknown integration" },
-        { status: 400 }
-      )
-    }
-
-    // Exchange code for tokens
-    let tokens
-    try {
-      tokens = await exchangeOAuthCode(toolName, code, state)
-    } catch (error: any) {
-      console.error("Token exchange failed:", error)
-      return NextResponse.json(
-        { detail: "Failed to exchange authorization code" },
-        { status: 400 }
-      )
-    }
-
-    // Create or update integration
-    const integration = await prisma.integration.upsert({
-      where: {
-        userId_name: {
-          userId: session.user.id,
-          name: toolName,
-        },
-      },
-      create: {
-        userId: session.user.id,
-        name: toolName,
-        displayName: integrationConfig.displayName,
-        status: "connected",
-        credentials: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresAt: Date.now() + tokens.expiresIn * 1000,
-        },
-      },
-      update: {
-        status: "connected",
-        credentials: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresAt: Date.now() + tokens.expiresIn * 1000,
-        },
-      },
-    })
-
-    return NextResponse.json({
-      status: "connected",
-      integration: toolName,
-      integration_id: integration.id,
-    })
-  } catch (error: any) {
-    console.error("OAuth callback error:", error)
-    return NextResponse.json(
-      { detail: error.message || "Failed to complete OAuth" },
-      { status: 500 }
-    )
+  if (!code || !state) {
+    return badRequest("Code and state are required")
   }
-}
+
+  const integrationConfig = AVAILABLE_INTEGRATIONS.find((i) => i.name === toolName)
+  if (!integrationConfig) {
+    return badRequest("Unknown integration")
+  }
+
+  let tokens
+  try {
+    tokens = await exchangeOAuthCode(toolName, code, state)
+  } catch (error: unknown) {
+    console.error("Token exchange failed:", error)
+    return badRequest("Failed to exchange authorization code")
+  }
+
+  const integration = await prisma.integration.upsert({
+    where: {
+      userId_name: { userId: session.user.id, name: toolName },
+    },
+    create: {
+      userId: session.user.id,
+      name: toolName,
+      displayName: integrationConfig.displayName,
+      status: "connected",
+      credentials: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: Date.now() + tokens.expiresIn * 1000,
+      },
+    },
+    update: {
+      status: "connected",
+      credentials: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: Date.now() + tokens.expiresIn * 1000,
+      },
+    },
+  })
+
+  return NextResponse.json({
+    status: "connected",
+    integration: toolName,
+    integration_id: integration.id,
+  })
+}, "OAuth callback")
 
 // GET /api/integrations/[toolName]/callback - Handle OAuth redirect
 export async function GET(
@@ -106,7 +73,6 @@ export async function GET(
     const error = searchParams.get("error")
 
     if (error) {
-      // Redirect to integrations page with error
       return NextResponse.redirect(
         new URL(`/integrations?error=${encodeURIComponent(error)}`, request.url)
       )
@@ -118,7 +84,6 @@ export async function GET(
       )
     }
 
-    // Verify and decode signed state to get user info
     const stateData = verifySignedState(state)
     if (!stateData) {
       return NextResponse.redirect(
@@ -126,7 +91,6 @@ export async function GET(
       )
     }
 
-    // Verify integration exists
     const integrationConfig = AVAILABLE_INTEGRATIONS.find((i) => i.name === toolName)
     if (!integrationConfig) {
       return NextResponse.redirect(
@@ -134,17 +98,12 @@ export async function GET(
       )
     }
 
-    // Exchange code for tokens
     try {
       const tokens = await exchangeOAuthCode(toolName, code, state)
 
-      // Create or update integration
       await prisma.integration.upsert({
         where: {
-          userId_name: {
-            userId: stateData.userId,
-            name: toolName,
-          },
+          userId_name: { userId: stateData.userId, name: toolName },
         },
         create: {
           userId: stateData.userId,
@@ -167,21 +126,20 @@ export async function GET(
         },
       })
 
-      // Redirect to integrations page with success
       return NextResponse.redirect(
         new URL(`/integrations?success=${toolName}`, request.url)
       )
-    } catch (error: any) {
-      console.error("OAuth callback error:", error)
+    } catch (oauthError: unknown) {
+      const message = oauthError instanceof Error ? oauthError.message : "callback_failed"
+      console.error("OAuth callback error:", oauthError)
       return NextResponse.redirect(
-        new URL(`/integrations?error=${encodeURIComponent(error.message)}`, request.url)
+        new URL(`/integrations?error=${encodeURIComponent(message)}`, request.url)
       )
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("OAuth callback error:", error)
     return NextResponse.redirect(
       new URL("/integrations?error=callback_failed", request.url)
     )
   }
 }
-
