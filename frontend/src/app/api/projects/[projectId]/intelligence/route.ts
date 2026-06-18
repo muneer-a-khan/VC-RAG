@@ -161,10 +161,10 @@ export async function GET(
       entities,
       knowledge_graph: knowledgeGraph,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get intelligence error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get intelligence" },
+      { detail: "Failed to get intelligence" },
       { status: 500 }
     )
   }

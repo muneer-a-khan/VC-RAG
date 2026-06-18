@@ -266,10 +266,10 @@ export async function POST(request: NextRequest) {
       message_id: messageId,
       sources,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Chat error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to process message" },
+      { detail: "Failed to process message" },
       { status: 500 }
     )
   }
@@ -313,10 +313,10 @@ export async function GET(request: NextRequest) {
         updated_at: chat.updatedAt.toISOString(),
       }))
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("List chats error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to list chats" },
+      { detail: "Failed to list chats" },
       { status: 500 }
     )
   }

@@ -32,8 +32,8 @@ async function clearUserData(userId: string) {
   return { vectorsDeleted, documentsDeleted }
 }
 
-// GET /api/chat/clear - Clear via GET for easy browser access
-export async function GET(request: NextRequest) {
+// POST /api/chat/clear - Clear uploaded documents and vector data for user
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
       documents_deleted: documentsDeleted,
       message: "All uploaded files and their data have been cleared. You can now upload new files.",
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Clear error:", error)
-    return NextResponse.json({ detail: error.message || "Failed to clear data" }, { status: 500 })
+    return NextResponse.json({ detail: "Failed to clear data" }, { status: 500 })
   }
 }
 
@@ -70,9 +70,9 @@ export async function DELETE(request: NextRequest) {
       documents_deleted: documentsDeleted,
       message: "All uploaded files and their data have been cleared.",
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Clear error:", error)
-    return NextResponse.json({ detail: error.message || "Failed to clear data" }, { status: 500 })
+    return NextResponse.json({ detail: "Failed to clear data" }, { status: 500 })
   }
 }
 

@@ -56,10 +56,10 @@ export async function GET(
       created_at: chat.createdAt.toISOString(),
       updated_at: chat.updatedAt.toISOString(),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get chat error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get chat" },
+      { detail: "Failed to get chat" },
       { status: 500 }
     )
   }
@@ -100,10 +100,10 @@ export async function DELETE(
       status: "deleted",
       chat_id: chatId,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete chat error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to delete chat" },
+      { detail: "Failed to delete chat" },
       { status: 500 }
     )
   }

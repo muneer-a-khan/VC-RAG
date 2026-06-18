@@ -32,10 +32,10 @@ export async function POST(request: NextRequest) {
       project_id: chat.projectId,
       created_at: chat.createdAt.toISOString(),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create chat error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to create chat" },
+      { detail: "Failed to create chat" },
       { status: 500 }
     )
   }

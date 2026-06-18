@@ -16,7 +16,10 @@ import { createHmac } from "crypto"
 import { indexDocument } from "./rag-service"
 import { extractTextContent } from "./text-extraction"
 
-const OAUTH_STATE_SECRET = process.env.NEXTAUTH_SECRET || "fallback-secret"
+const OAUTH_STATE_SECRET = process.env.NEXTAUTH_SECRET
+if (!OAUTH_STATE_SECRET) {
+  console.error("CRITICAL: NEXTAUTH_SECRET is not set — OAuth state signing is disabled")
+}
 
 // ============================================================
 // TYPES
@@ -139,6 +142,9 @@ function buildActionableError(
 // ============================================================
 
 function createSignedState(data: Record<string, string>): string {
+  if (!OAUTH_STATE_SECRET) {
+    throw new Error("NEXTAUTH_SECRET is not configured — cannot create signed OAuth state")
+  }
   const payload = JSON.stringify(data)
   const signature = createHmac("sha256", OAUTH_STATE_SECRET)
     .update(payload)
@@ -151,9 +157,17 @@ function createSignedState(data: Record<string, string>): string {
 export function verifySignedState(
   state: string
 ): Record<string, string> | null {
+  if (!OAUTH_STATE_SECRET) {
+    console.error("NEXTAUTH_SECRET is not configured — cannot verify OAuth state")
+    return null
+  }
   try {
     const decoded = JSON.parse(Buffer.from(state, "base64url").toString())
     const { payload, signature } = decoded
+    if (!payload || !signature) {
+      console.error("OAuth state missing payload or signature")
+      return null
+    }
     const expectedSignature = createHmac("sha256", OAUTH_STATE_SECRET)
       .update(payload)
       .digest("hex")
@@ -163,12 +177,7 @@ export function verifySignedState(
     }
     return JSON.parse(payload)
   } catch {
-    // Try legacy unsigned format for backward compatibility
-    try {
-      return JSON.parse(Buffer.from(state, "base64").toString())
-    } catch {
-      return null
-    }
+    return null
   }
 }
 

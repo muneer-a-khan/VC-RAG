@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json(result)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get integrations error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get integrations" },
+      { detail: "Failed to get integrations" },
       { status: 500 }
     )
   }

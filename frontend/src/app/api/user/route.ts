@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
       organization: user.organization,
       created_at: user.createdAt,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get user error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get user" },
+      { detail: "Failed to get user" },
       { status: 500 }
     )
   }
