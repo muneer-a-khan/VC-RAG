@@ -90,10 +90,10 @@ export async function POST(
         { status: 500 }
       )
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sync error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to sync" },
+      { detail: "Failed to sync" },
       { status: 500 }
     )
   }

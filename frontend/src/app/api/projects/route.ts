@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
         chat_count: p._count.chats,
       }))
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get projects error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get projects" },
+      { detail: "Failed to get projects" },
       { status: 500 }
     )
   }
@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
       type: project.type,
       created_at: project.createdAt,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create project error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to create project" },
+      { detail: "Failed to create project" },
       { status: 500 }
     )
   }

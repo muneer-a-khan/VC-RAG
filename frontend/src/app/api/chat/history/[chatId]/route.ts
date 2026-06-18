@@ -48,10 +48,10 @@ export async function GET(
       })),
       created_at: chat.createdAt.toISOString(),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get chat history error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get chat history" },
+      { detail: "Failed to get chat history" },
       { status: 500 }
     )
   }

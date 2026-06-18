@@ -30,24 +30,20 @@ export async function GET(
 
     try {
       const authUrl = getOAuthUrl(toolName, session.user.id)
-      const state = Buffer.from(
-        JSON.stringify({ userId: session.user.id, integration: toolName })
-      ).toString("base64")
 
       return NextResponse.json({
         auth_url: authUrl,
-        state,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       return NextResponse.json(
-        { detail: error.message || "OAuth not configured for this integration" },
+        { detail: "OAuth not configured for this integration" },
         { status: 400 }
       )
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get auth URL error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get auth URL" },
+      { detail: "Failed to get auth URL" },
       { status: 500 }
     )
   }

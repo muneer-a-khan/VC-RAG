@@ -9,6 +9,28 @@ import { extractTextContent } from "@/lib/services/text-extraction"
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "text/markdown",
+  "text/html",
+  "application/json",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+])
+
+const ALLOWED_EXTENSIONS = new Set([
+  ".pdf", ".txt", ".csv", ".md", ".html", ".json", ".docx", ".xlsx",
+])
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+
+function isAllowedFile(name: string, type: string): boolean {
+  const ext = name.toLowerCase().slice(name.lastIndexOf("."))
+  return ALLOWED_EXTENSIONS.has(ext) || ALLOWED_MIME_TYPES.has(type)
+}
+
 // POST /api/chat/upload
 export async function POST(request: NextRequest) {
   try {
@@ -49,8 +71,16 @@ export async function POST(request: NextRequest) {
 
     for (const file of files) {
       try {
-        console.log(`Processing file: ${file.name}, type: ${file.type}, size: ${file.size}`)
-        
+        if (!isAllowedFile(file.name, file.type)) {
+          errors.push(`File type not allowed: ${file.name}`)
+          continue
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+          errors.push(`File too large (max 50 MB): ${file.name}`)
+          continue
+        }
+
         const buffer = Buffer.from(await file.arrayBuffer())
         const fileSize = buffer.length
         
@@ -129,10 +159,10 @@ export async function POST(request: NextRequest) {
       files: uploadedFiles,
       errors: errors.length > 0 ? errors : undefined,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Upload error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to upload files" },
+      { detail: "Failed to upload files" },
       { status: 500 }
     )
   }
@@ -174,10 +204,10 @@ export async function GET(request: NextRequest) {
       })),
       total: documents.length,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get uploads error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get uploads" },
+      { detail: "Failed to get uploads" },
       { status: 500 }
     )
   }
@@ -230,10 +260,10 @@ export async function DELETE(request: NextRequest) {
     })
 
     return NextResponse.json({ success: true, deleted: documentId })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete upload error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to delete file" },
+      { detail: "Failed to delete file" },
       { status: 500 }
     )
   }

@@ -88,10 +88,10 @@ export async function GET(request: NextRequest) {
       })),
       total: messages.length,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Search error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to search" },
+      { detail: "Failed to search" },
       { status: 500 }
     )
   }

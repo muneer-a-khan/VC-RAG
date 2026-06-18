@@ -42,10 +42,10 @@ export async function GET(
       sync_status: integration.syncStatus,
       created_at: integration.createdAt.toISOString(),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get integration error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get integration" },
+      { detail: "Failed to get integration" },
       { status: 500 }
     )
   }
@@ -108,10 +108,10 @@ export async function POST(
       status: "connected",
       integration_id: integration.id,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Connect integration error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to connect integration" },
+      { detail: "Failed to connect integration" },
       { status: 500 }
     )
   }
@@ -155,10 +155,10 @@ export async function DELETE(
       status: "disconnected",
       integration: toolName,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Disconnect integration error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to disconnect integration" },
+      { detail: "Failed to disconnect integration" },
       { status: 500 }
     )
   }

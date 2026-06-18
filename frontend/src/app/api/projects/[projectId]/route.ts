@@ -46,10 +46,10 @@ export async function GET(
       document_count: project._count.documents,
       chat_count: project._count.chats,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get project error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to get project" },
+      { detail: "Failed to get project" },
       { status: 500 }
     )
   }
@@ -103,10 +103,10 @@ export async function PATCH(
       created_at: project.createdAt.toISOString(),
       updated_at: project.updatedAt.toISOString(),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update project error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to update project" },
+      { detail: "Failed to update project" },
       { status: 500 }
     )
   }
@@ -147,10 +147,10 @@ export async function DELETE(
       status: "deleted",
       project_id: projectId,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete project error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to delete project" },
+      { detail: "Failed to delete project" },
       { status: 500 }
     )
   }

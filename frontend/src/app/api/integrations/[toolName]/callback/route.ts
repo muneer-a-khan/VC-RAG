@@ -84,10 +84,10 @@ export async function POST(
       integration: toolName,
       integration_id: integration.id,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("OAuth callback error:", error)
     return NextResponse.json(
-      { detail: error.message || "Failed to complete OAuth" },
+      { detail: "Failed to complete OAuth" },
       { status: 500 }
     )
   }
@@ -171,13 +171,13 @@ export async function GET(
       return NextResponse.redirect(
         new URL(`/integrations?success=${toolName}`, request.url)
       )
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("OAuth callback error:", error)
       return NextResponse.redirect(
-        new URL(`/integrations?error=${encodeURIComponent(error.message)}`, request.url)
+        new URL("/integrations?error=token_exchange_failed", request.url)
       )
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("OAuth callback error:", error)
     return NextResponse.redirect(
       new URL("/integrations?error=callback_failed", request.url)
