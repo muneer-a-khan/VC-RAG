@@ -923,8 +923,10 @@ async function directDeepSeekCall(
       const data = await response.json()
       return data.choices[0].message.content || ""
     }
+    console.error("DeepSeek API error:", response.status, response.statusText)
     return generateFallbackResponse(query, context)
-  } catch {
+  } catch (deepseekError) {
+    console.error("DeepSeek API call failed:", deepseekError)
     return generateFallbackResponse(query, context)
   }
 }
@@ -1129,8 +1131,8 @@ async function expandToParentChunks(chunks: DocumentChunk[]): Promise<DocumentCh
           })
           continue
         }
-      } catch {
-        // Parent not found, use the child chunk as-is
+      } catch (parentLookupError) {
+        console.warn(`Parent chunk lookup failed for parentId=${parentId}:`, parentLookupError)
       }
     }
 
@@ -1245,8 +1247,8 @@ export async function indexDocument(
           childChunks[i].id
         )
       }
-    } catch {
-      // pgvector not available - store embeddings in metadata as fallback
+    } catch (pgvectorError) {
+      console.warn("pgvector embedding update unavailable, falling back to metadata storage:", pgvectorError)
       for (let i = 0; i < childChunks.length; i++) {
         const existingMeta = JSON.parse(
           typeof childChunks[i].metadata === "string"

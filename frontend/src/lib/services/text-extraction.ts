@@ -332,7 +332,8 @@ export async function extractTextContent(
     try {
       const parsed = JSON.parse(raw)
       return JSON.stringify(parsed, null, 2)
-    } catch {
+    } catch (parseError) {
+      console.warn(`Failed to parse JSON file ${filename}:`, parseError)
       return raw
     }
   }

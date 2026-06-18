@@ -57,14 +57,16 @@ export async function POST(request: NextRequest) {
         const timestamp = Date.now()
         const uniqueFilename = `${session.user.id}/${timestamp}-${file.name}`
         
-        // Non-blocking storage upload
-        supabase.storage
+        // Upload to storage
+        const { error: storageError } = await supabase.storage
           .from(STORAGE_BUCKET)
           .upload(uniqueFilename, buffer, {
             contentType: file.type || 'application/octet-stream',
             upsert: false,
           })
-          .catch(err => console.warn("Storage upload warning:", err))
+        if (storageError) {
+          console.error(`Storage upload failed for ${file.name}:`, storageError.message)
+        }
 
         // Create document record
         const document = await prisma.document.create({
@@ -209,10 +211,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (document.storagePath) {
-      supabase.storage
+      const { error: storageError } = await supabase.storage
         .from(STORAGE_BUCKET)
         .remove([document.storagePath])
-        .catch(err => console.warn("Storage delete warning:", err))
+      if (storageError) {
+        console.error(`Storage delete failed for ${document.storagePath}:`, storageError.message)
+      }
     }
 
     await prisma.vectorDocument.deleteMany({

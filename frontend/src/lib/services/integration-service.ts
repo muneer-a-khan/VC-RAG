@@ -162,11 +162,12 @@ export function verifySignedState(
       return null
     }
     return JSON.parse(payload)
-  } catch {
+  } catch (signedError) {
     // Try legacy unsigned format for backward compatibility
     try {
       return JSON.parse(Buffer.from(state, "base64").toString())
-    } catch {
+    } catch (legacyError) {
+      console.error("OAuth state verification failed for both signed and legacy formats:", signedError, legacyError)
       return null
     }
   }
@@ -407,8 +408,8 @@ export async function syncGoogleWorkspace(
     if (credentials.refreshToken) {
       try {
         accessToken = await refreshGoogleToken(credentials.refreshToken)
-      } catch {
-        // Use existing token if refresh fails
+      } catch (refreshError) {
+        console.warn("Google Workspace token refresh failed, using existing token:", refreshError)
       }
     }
 
@@ -448,8 +449,8 @@ export async function syncGoogleWorkspace(
       // Get initial changes token for next incremental sync
       try {
         newChangesToken = await getDriveStartPageToken(accessToken)
-      } catch {
-        // Non-critical
+      } catch (tokenError) {
+        console.warn("Failed to get Drive changes page token:", tokenError)
       }
     }
 
@@ -614,8 +615,8 @@ export async function syncGmail(
     if (credentials.refreshToken) {
       try {
         accessToken = await refreshGoogleToken(credentials.refreshToken)
-      } catch {
-        // Use existing token
+      } catch (refreshError) {
+        console.warn("Gmail token refresh failed, using existing token:", refreshError)
       }
     }
 

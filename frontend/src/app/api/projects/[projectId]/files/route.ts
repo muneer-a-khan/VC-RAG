@@ -105,13 +105,15 @@ export async function POST(
         const storagePath = `${session.user.id}/${projectId}/${timestamp}-${file.name}`
 
         // Upload to Supabase Storage
-        supabase.storage
+        const { error: storageError } = await supabase.storage
           .from(STORAGE_BUCKET)
           .upload(storagePath, buffer, {
             contentType: file.type || 'application/octet-stream',
             upsert: false,
           })
-          .catch((err: any) => console.warn("Storage upload warning:", err))
+        if (storageError) {
+          console.error(`Storage upload failed for ${file.name}:`, storageError.message)
+        }
 
         // Create document record
         const document = await prisma.document.create({

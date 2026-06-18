@@ -129,8 +129,8 @@ export async function GET(
               },
             },
           })
-        } catch {
-          // Non-critical - caching failure shouldn't break the response
+        } catch (cacheError) {
+          console.warn("Failed to cache intelligence results for project", projectId, cacheError)
         }
       }
     }

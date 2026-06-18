@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error: any) {
           console.error("Auth error:", error)
-          return null
+          throw new Error("Authentication service unavailable")
         }
       },
     }),
