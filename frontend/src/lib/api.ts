@@ -3,6 +3,18 @@
  * All requests go to the same-origin Next.js API endpoints
  */
 
+class ApiError extends Error {
+  status: number
+  detail: string
+
+  constructor(status: number, detail: string) {
+    super(detail)
+    this.name = "ApiError"
+    this.status = status
+    this.detail = detail
+  }
+}
+
 // Helper function for making API requests
 async function fetchApi<T>(
   endpoint: string,
@@ -21,15 +33,17 @@ async function fetchApi<T>(
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined") {
       window.location.href = "/login"
-      throw new Error("Unauthorized")
+      throw new ApiError(401, "Unauthorized")
     }
     
     const error = await response.json().catch(() => ({ detail: "Request failed" }))
-    throw new Error(error.detail || `HTTP ${response.status}`)
+    throw new ApiError(response.status, error.detail || `HTTP ${response.status}`)
   }
 
   return response.json()
 }
+
+export { ApiError }
 
 // API client functions
 export const apiClient = {

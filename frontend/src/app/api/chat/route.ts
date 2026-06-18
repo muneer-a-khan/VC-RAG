@@ -179,7 +179,8 @@ export async function POST(request: NextRequest) {
                 )
                 fullResponse = fallbackText
                 sendEvent({ type: "text", content: fallbackText })
-              } catch {
+              } catch (emptyStreamFallbackErr) {
+                console.error("Fallback generation for empty stream also failed:", emptyStreamFallbackErr)
                 fullResponse =
                   "I couldn't generate a response. Please try again or upload some documents first."
                 sendEvent({ type: "text", content: fullResponse })
@@ -214,8 +215,7 @@ export async function POST(request: NextRequest) {
           },
         })
       } catch (streamError) {
-        console.error("Streaming setup error:", streamError)
-        // Fall through to non-streaming
+        console.error("Streaming setup error, falling back to non-streaming:", streamError)
       }
     }
 
